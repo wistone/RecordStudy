@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学习搭子 - 记录每一步成长</title>
+    <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Navigation -->
+        <nav class="navbar">
+            <div class="nav-container">
+                <div class="nav-brand">
+                    <svg class="logo" viewBox="0 0 40 40" width="32" height="32">
+                        <rect x="8" y="8" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"/>
+                        <circle cx="20" cy="20" r="6" fill="currentColor" opacity="0.8"/>
+                    </svg>
+                    <span>学习搭子</span>
+                </div>
+                <div class="nav-links">
+                    <a href="#/" class="nav-link active">首页</a>
+                    <a href="#/analytics" class="nav-link">数据分析</a>
+                    <a href="#/records" class="nav-link">学习记录</a>
+                </div>
+                <div class="nav-user">
+                    <div class="streak-badge">
+                        <span class="streak-icon">🔥</span>
+                        <span id="streakDays">0</span>天
+                    </div>
+                    <div class="user-profile">
+                        <div class="user-avatar">
+                            <span class="avatar-icon">👤</span>
+                        </div>
+                        <span class="user-name">学习者</span>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main id="mainContent">
+            <!-- Home Page -->
+            <div id="homePage" class="page active">
+                <div class="container">
+                    <!-- Hero Section -->
+                    <section class="hero">
+                        <h1 class="hero-title">记录学习，见证成长</h1>
+                        <p class="hero-subtitle">随手记录每天的学习内容、进度与思考</p>
+                        <div class="hero-actions">
+                            <button class="btn btn-primary btn-large" onclick="app.showQuickRecord()">
+                                <span class="btn-icon">📝</span>
+                                开始记录
+                            </button>
+                        </div>
+                    </section>
+
+                    <!-- Learning Summary -->
+                    <section class="learning-summary">
+                        <h2 class="section-title">学习概览</h2>
+                        <div class="summary-cards">
+                            <div class="summary-card today">
+                                <div class="card-header">
+                                    <div class="card-icon">📅</div>
+                                    <div class="card-period">今日</div>
+                                </div>
+                                <div class="card-metrics">
+                                    <div class="metric">
+                                        <div class="metric-value" id="todayDuration">0</div>
+                                        <div class="metric-label">分钟</div>
+                                    </div>
+                                    <div class="metric">
+                                        <div class="metric-value" id="todayRecords">0</div>
+                                        <div class="metric-label">记录</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="summary-card week">
+                                <div class="card-header">
+                                    <div class="card-icon">📊</div>
+                                    <div class="card-period">本周</div>
+                                </div>
+                                <div class="card-metrics">
+                                    <div class="metric">
+                                        <div class="metric-value" id="weekDuration">0</div>
+                                        <div class="metric-label">分钟</div>
+                                    </div>
+                                    <div class="metric">
+                                        <div class="metric-value" id="weekDays">0</div>
+                                        <div class="metric-label">活跃天数</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="summary-card month">
+                                <div class="card-header">
+                                    <div class="card-icon">🎯</div>
+                                    <div class="card-period">本月</div>
+                                </div>
+                                <div class="card-metrics">
+                                    <div class="metric">
+                                        <div class="metric-value" id="monthDuration">0</div>
+                                        <div class="metric-label">分钟</div>
+                                    </div>
+                                    <div class="metric">
+                                        <div class="metric-value" id="monthStreak">0</div>
+                                        <div class="metric-label">最长连击</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Recent Records -->
+                    <section class="recent-records">
+                        <div class="section-header">
+                            <h2 class="section-title">最近记录</h2>
+                            <a href="#/records" class="link-more">查看全部 →</a>
+                        </div>
+                        <div id="recentRecordsList" class="records-list">
+                            <!-- Records will be inserted here -->
+                        </div>
+                    </section>
+                </div>
+            </div>
+
+            <!-- Records Page -->
+            <div id="recordsPage" class="page">
+                <div class="container">
+                    <div class="page-header">
+                        <h1>学习记录</h1>
+                        <button class="btn btn-primary" onclick="app.showQuickRecord()">新建记录</button>
+                    </div>
+                    
+                    <!-- Filters -->
+                    <div class="filters">
+                        <select class="filter-select" id="typeFilter">
+                            <option value="">所有类型</option>
+                            <option value="video">视频</option>
+                            <option value="podcast">播客</option>
+                            <option value="book">书籍</option>
+                            <option value="course">课程</option>
+                            <option value="article">文章</option>
+                            <option value="exercise">题目</option>
+                            <option value="project">项目</option>
+                            <option value="workout">运动</option>
+                            <option value="other">其他</option>
+                        </select>
+                        <input type="text" class="filter-input" id="searchInput" placeholder="搜索标题或内容...">
+                    </div>
+
+                    <!-- Records List -->
+                    <div id="recordsList" class="records-list full">
+                        <!-- Records will be inserted here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analytics Page -->
+            <div id="analyticsPage" class="page">
+                <div class="container">
+                    <h1 class="page-title">数据分析</h1>
+                    
+                    <!-- Time Stats and Calendar Row -->
+                    <section class="stats-row">
+                        <!-- Time Stats -->
+                        <div class="time-stats-container">
+                            <div class="section-header">
+                                <h2 class="section-title">学习时长趋势</h2>
+                                <div class="period-tabs">
+                                    <button class="period-tab active" data-period="week" onclick="app.switchPeriod('week')">周</button>
+                                    <button class="period-tab" data-period="month" onclick="app.switchPeriod('month')">月</button>
+                                    <button class="period-tab" data-period="year" onclick="app.switchPeriod('year')">年</button>
+                                </div>
+                            </div>
+                            <div class="chart-container">
+                                <div id="durationChart" class="mock-chart">
+                                    <div class="chart-bars" id="chartBars">
+                                        <!-- Chart bars will be generated here -->
+                                    </div>
+                                    <div class="chart-labels" id="chartLabels">
+                                        <!-- Chart labels will be generated here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Calendar Widget -->
+                        <div class="calendar-widget">
+                            <div class="widget-header">
+                                <h3>打卡日历</h3>
+                                <div class="calendar-nav-mini">
+                                    <button class="nav-btn" onclick="app.changeMonth(-1)">‹</button>
+                                    <span id="miniCalendarMonth">2024年1月</span>
+                                    <button class="nav-btn" onclick="app.changeMonth(1)">›</button>
+                                </div>
+                            </div>
+                            <div id="miniCalendarGrid" class="mini-calendar-grid">
+                                <!-- Mini calendar will be generated here -->
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Category Stats -->
+                    <section class="stats-section">
+                        <h2 class="section-title">学习分析</h2>
+                        <div class="stats-grid-three">
+                            <div class="stat-card">
+                                <h3>学习形式分布</h3>
+                                <div id="typeStats" class="stat-list">
+                                    <!-- Stats will be inserted here -->
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <h3>热门主题</h3>
+                                <div id="weeklyTopics" class="stat-list">
+                                    <!-- Stats will be inserted here -->
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <h3>里程碑成就</h3>
+                                <div class="milestone-mini-list">
+                                    <div class="milestone-mini-item">
+                                        <div class="milestone-mini-icon">🎯</div>
+                                        <div class="milestone-mini-content">
+                                            <span class="milestone-mini-title">累计100小时</span>
+                                            <span class="milestone-mini-date">2024-01-20</span>
+                                        </div>
+                                    </div>
+                                    <div class="milestone-mini-item">
+                                        <div class="milestone-mini-icon">📚</div>
+                                        <div class="milestone-mini-content">
+                                            <span class="milestone-mini-title">连续学习21天</span>
+                                            <span class="milestone-mini-date">2024-01-18</span>
+                                        </div>
+                                    </div>
+                                    <div class="milestone-mini-item">
+                                        <div class="milestone-mini-icon">🏆</div>
+                                        <div class="milestone-mini-content">
+                                            <span class="milestone-mini-title">完成5个项目</span>
+                                            <span class="milestone-mini-date">2024-01-15</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- AI Summary -->
+                    <section class="ai-summary">
+                        <h2 class="section-title">AI 智能总结</h2>
+                        <div class="summary-content">
+                            <div class="summary-insights">
+                                <div class="insight-item">
+                                    <div class="insight-icon">📈</div>
+                                    <div class="insight-text">
+                                        <strong>学习趋势：</strong>
+                                        <span id="trendInsight">本月学习时长相比上月增长25%，保持良好上升趋势</span>
+                                    </div>
+                                </div>
+                                <div class="insight-item">
+                                    <div class="insight-icon">🎯</div>
+                                    <div class="insight-text">
+                                        <strong>重点方向：</strong>
+                                        <span id="focusInsight">AI和编程是你的主要学习方向，占总时长的65%</span>
+                                    </div>
+                                </div>
+                                <div class="insight-item">
+                                    <div class="insight-icon">⭐</div>
+                                    <div class="insight-text">
+                                        <strong>优势表现：</strong>
+                                        <span id="strengthInsight">视频学习效率最高，平均专注度达到4.5/5</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="next-action">
+                                <div class="action-header">
+                                    <strong>🚀 下一步行动建议</strong>
+                                </div>
+                                <div class="action-content">
+                                    <span id="nextActionText">建议继续加强实践项目，可以尝试将理论知识应用到实际项目中，提高学习转化率</span>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- Quick Record Modal -->
+        <div id="quickRecordModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>快速记录</h2>
+                    <button class="modal-close" onclick="app.closeQuickRecord()">×</button>
+                </div>
+                <div class="modal-body">
+                    <!-- Tab Navigation -->
+                    <div class="tabs">
+                        <button class="tab-btn active" onclick="app.switchRecordTab('form')">表单记录</button>
+                        <button class="tab-btn" onclick="app.switchRecordTab('quick')">随手记</button>
+                    </div>
+
+                    <!-- Form Record -->
+                    <div id="formRecord" class="tab-content active">
+                        <form id="recordForm" class="record-form">
+                            <!-- Step 1: Type -->
+                            <div class="form-step active" data-step="1">
+                                <label class="form-label">选择形式类别</label>
+                                <div class="type-grid">
+                                    <button type="button" class="type-btn" data-type="video">📹 视频</button>
+                                    <button type="button" class="type-btn" data-type="podcast">🎙️ 播客</button>
+                                    <button type="button" class="type-btn" data-type="book">📚 书籍</button>
+                                    <button type="button" class="type-btn" data-type="course">🎓 课程</button>
+                                    <button type="button" class="type-btn" data-type="article">📄 文章</button>
+                                    <button type="button" class="type-btn" data-type="exercise">✏️ 题目</button>
+                                    <button type="button" class="type-btn" data-type="project">💻 项目</button>
+                                    <button type="button" class="type-btn" data-type="workout">🏃 运动</button>
+                                    <button type="button" class="type-btn" data-type="other">📌 其他</button>
+                                </div>
+                            </div>
+
+                            <!-- Step 2: Categories -->
+                            <div class="form-step" data-step="2">
+                                <label class="form-label">内容标签（可多选）</label>
+                                <div class="tag-input-container">
+                                    <input type="text" class="tag-input" placeholder="输入标签，如：英语、编程、AI...">
+                                    <div class="tag-suggestions">
+                                        <span class="tag-suggestion">英语</span>
+                                        <span class="tag-suggestion">AI</span>
+                                        <span class="tag-suggestion">数学</span>
+                                        <span class="tag-suggestion">编程</span>
+                                        <span class="tag-suggestion">历史</span>
+                                    </div>
+                                </div>
+                                <div class="selected-tags" id="selectedTags"></div>
+                            </div>
+
+                            <!-- Step 3: Title -->
+                            <div class="form-step" data-step="3">
+                                <label class="form-label">标题</label>
+                                <input type="text" class="form-input" id="recordTitle" placeholder="输入学习内容标题..." required>
+                            </div>
+
+                            <!-- Step 4: Duration -->
+                            <div class="form-step" data-step="4">
+                                <label class="form-label">学习时长（分钟）</label>
+                                <input type="number" class="form-input" id="recordDuration" placeholder="25" min="1">
+                                <div class="duration-presets">
+                                    <button type="button" class="preset-btn" data-duration="25">25分钟</button>
+                                    <button type="button" class="preset-btn" data-duration="45">45分钟</button>
+                                    <button type="button" class="preset-btn" data-duration="60">1小时</button>
+                                    <button type="button" class="preset-btn" data-duration="90">1.5小时</button>
+                                </div>
+                            </div>
+
+                            <!-- Optional Fields -->
+                            <div class="form-step" data-step="5">
+                                <label class="form-label">反馈（可选）</label>
+                                <div class="feedback-grid">
+                                    <div class="feedback-item">
+                                        <label>难度</label>
+                                        <div class="rating" data-field="difficulty">
+                                            <span class="star" data-value="1">☆</span>
+                                            <span class="star" data-value="2">☆</span>
+                                            <span class="star" data-value="3">☆</span>
+                                            <span class="star" data-value="4">☆</span>
+                                            <span class="star" data-value="5">☆</span>
+                                        </div>
+                                    </div>
+                                    <div class="feedback-item">
+                                        <label>专注度</label>
+                                        <div class="rating" data-field="focus">
+                                            <span class="star" data-value="1">☆</span>
+                                            <span class="star" data-value="2">☆</span>
+                                            <span class="star" data-value="3">☆</span>
+                                            <span class="star" data-value="4">☆</span>
+                                            <span class="star" data-value="5">☆</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <textarea class="form-textarea" placeholder="记录你的思考和感受..."></textarea>
+                            </div>
+
+                            <!-- Form Navigation -->
+                            <div class="form-nav">
+                                <button type="button" class="btn btn-secondary" onclick="app.prevStep()">上一步</button>
+                                <button type="button" class="btn btn-primary" onclick="app.nextStep()">下一步</button>
+                                <button type="submit" class="btn btn-success" style="display:none;">完成记录</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Quick Note -->
+                    <div id="quickNote" class="tab-content">
+                        <div class="quick-note-form">
+                            <textarea class="quick-input" placeholder="记录一句话、粘贴链接或上传图片..." rows="4"></textarea>
+                            <div class="quick-actions">
+                                <button class="btn-icon-action" title="上传图片">📷</button>
+                                <button class="btn-icon-action" title="添加链接">🔗</button>
+                            </div>
+                            <button class="btn btn-primary btn-block" onclick="app.saveQuickNote()">智能识别并保存</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
