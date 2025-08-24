@@ -132,15 +132,18 @@ create index if not exists idx_records_search_expr
     to_tsvector('simple', coalesce(title,'') || ' ' || coalesce(body_md,''))
   );
 
--- ------------ 标签（系统标签与用户自定义并存；映射到资源上，且“按人”生效） ------------
+-- ------------ 标签（系统标签与用户自定义并存；映射到资源上，且"按人"生效） ------------
 create table if not exists public.tags (
   tag_id bigserial primary key,
   tag_name text not null,
   tag_type tag_type not null default 'category',
   created_by uuid references auth.users(id),     -- null 表示系统预置
-  created_at timestamptz not null default now(),
-  unique (tag_name, coalesce(created_by, '00000000-0000-0000-0000-000000000000'))
+  created_at timestamptz not null default now()
 );
+
+-- 创建唯一索引来替代UNIQUE约束中的函数调用
+create unique index if not exists uq_tags_name_creator
+  on public.tags (tag_name, coalesce(created_by, '00000000-0000-0000-0000-000000000000'::uuid));
 
 create table if not exists public.resource_tags (
   resource_tag_id bigserial primary key,
