@@ -5,209 +5,74 @@ class LearningBuddyApp {
         this.currentStep = 1;
         this.recordData = {};
         this.records = [];
+        this.analytics = null;
+        this.currentUser = null;
         this.currentMonth = new Date();
         this.currentPeriod = 'week'; // week, month, year
         this.init();
     }
 
-    init() {
-        this.loadMockData();
+    async init() {
+        // Check authentication
+        await this.checkAuth();
+        
         this.setupEventListeners();
-        this.updateDashboard();
-        this.renderRecentRecords();
+        await this.loadData();
         this.renderCalendar();
     }
-
-    // Generate Rich Mock Data for Prototype (30% of month coverage)
-    loadMockData() {
-        const today = new Date();
-        const currentMonth = today.getMonth();
-        const currentYear = today.getFullYear();
-        const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-        
-        // Generate learning days (30% coverage)
-        const learningDays = [];
-        const targetDays = Math.floor(daysInMonth * 0.3);
-        
-        // Ensure today and recent days are included
-        for (let i = 0; i < Math.min(3, targetDays); i++) {
-            learningDays.push(today.getDate() - i);
+    
+    async checkAuth() {
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+            window.location.href = '/login';
+            return;
         }
         
-        // Add random days throughout the month
-        while (learningDays.length < targetDays) {
-            const randomDay = Math.floor(Math.random() * daysInMonth) + 1;
-            if (!learningDays.includes(randomDay) && randomDay > 0) {
-                learningDays.push(randomDay);
-            }
+        try {
+            this.currentUser = await apiClient.getCurrentUser();
+            this.updateUserInfo();
+        } catch (error) {
+            console.error('Auth check failed:', error);
+            window.location.href = '/login';
         }
-        
-        const types = [
-            { type: 'video', icon: '📹', weight: 0.35 },
-            { type: 'book', icon: '📚', weight: 0.20 },
-            { type: 'course', icon: '🎓', weight: 0.15 },
-            { type: 'podcast', icon: '🎙️', weight: 0.10 },
-            { type: 'article', icon: '📄', weight: 0.08 },
-            { type: 'exercise', icon: '✏️', weight: 0.07 },
-            { type: 'project', icon: '💻', weight: 0.05 }
-        ];
-        
-        const categories = [
-            { name: 'AI', weight: 0.25 },
-            { name: '编程', weight: 0.20 },
-            { name: '数学', weight: 0.15 },
-            { name: '英语', weight: 0.12 },
-            { name: '机器学习', weight: 0.10 },
-            { name: '算法', weight: 0.08 },
-            { name: '数据科学', weight: 0.05 },
-            { name: '产品设计', weight: 0.03 },
-            { name: '历史', weight: 0.02 }
-        ];
-        
-        const titles = {
-            video: [
-                'MIT 6.001 Structure and Interpretation',
-                'CS50 Introduction to Computer Science',
-                '3Blue1Brown - 线性代数的本质',
-                'Andrew Ng - Deep Learning Course',
-                'Python 数据结构与算法',
-                'React 18 完整教程',
-                'TED Talk - The Future of AI'
-            ],
-            book: [
-                '深度学习入门：基于Python的理论与实现',
-                '算法导论（第三版）',
-                '统计学习方法',
-                'Clean Code',
-                '人工智能：一种现代的方法',
-                '数学之美',
-                'The Pragmatic Programmer'
-            ],
-            course: [
-                'Coursera - Machine Learning by Andrew Ng',
-                'edX - Introduction to Computer Science',
-                '慕课网 - Python数据分析',
-                'Udacity - AI Programming with Python',
-                'Khan Academy - Statistics and Probability',
-                '极客时间 - 算法训练营'
-            ],
-            podcast: [
-                'Lex Fridman Podcast - Yann LeCun',
-                'Talk Python to Me - FastAPI',
-                '得到 - 薛兆丰的经济学课',
-                'The AI Podcast by NVIDIA',
-                'Software Engineering Daily - ML',
-                'Syntax - Web Development'
-            ],
-            article: [
-                'Attention Is All You Need 论文解读',
-                'React Hooks 最佳实践',
-                'Python 性能优化指南',
-                'Transformer 模型详解',
-                '机器学习中的正则化',
-                '设计模式在实际项目中的应用'
-            ],
-            exercise: [
-                'LeetCode 两数之和',
-                'HackerRank SQL 挑战',
-                'Codeforces Round 850',
-                'Kaggle Titanic Competition',
-                'LeetCode 动态规划专题',
-                'AtCoder Beginner Contest'
-            ],
-            project: [
-                '个人博客系统开发',
-                '股票价格预测模型',
-                '聊天机器人实现',
-                'React Native 移动应用',
-                '图像分类深度学习项目',
-                'Web爬虫数据收集系统'
-            ]
-        };
-        
-        this.records = [];
-        let recordId = 1;
-        
-        learningDays.sort((a, b) => b - a).forEach((day, dayIndex) => {
-            const recordsPerDay = Math.floor(Math.random() * 3) + 1; // 1-3 records per day
-            
-            for (let i = 0; i < recordsPerDay; i++) {
-                // Weighted random selection for type
-                const typeRandom = Math.random();
-                let cumulativeWeight = 0;
-                let selectedType = types[0];
-                
-                for (const typeObj of types) {
-                    cumulativeWeight += typeObj.weight;
-                    if (typeRandom <= cumulativeWeight) {
-                        selectedType = typeObj;
-                        break;
-                    }
-                }
-                
-                // Weighted random selection for categories (1-3 categories)
-                const numCategories = Math.floor(Math.random() * 3) + 1;
-                const selectedCategories = [];
-                for (let j = 0; j < numCategories; j++) {
-                    const catRandom = Math.random();
-                    let catCumulativeWeight = 0;
-                    for (const catObj of categories) {
-                        catCumulativeWeight += catObj.weight;
-                        if (catRandom <= catCumulativeWeight && !selectedCategories.includes(catObj.name)) {
-                            selectedCategories.push(catObj.name);
-                            break;
-                        }
-                    }
-                }
-                
-                // Duration based on type
-                let duration;
-                switch (selectedType.type) {
-                    case 'video':
-                        duration = Math.floor(Math.random() * 60) + 15; // 15-75min
-                        break;
-                    case 'book':
-                        duration = Math.floor(Math.random() * 90) + 30; // 30-120min
-                        break;
-                    case 'course':
-                        duration = Math.floor(Math.random() * 120) + 45; // 45-165min
-                        break;
-                    case 'podcast':
-                        duration = Math.floor(Math.random() * 90) + 20; // 20-110min
-                        break;
-                    case 'project':
-                        duration = Math.floor(Math.random() * 180) + 60; // 60-240min
-                        break;
-                    default:
-                        duration = Math.floor(Math.random() * 45) + 15; // 15-60min
-                }
-                
-                const recordDate = new Date(currentYear, currentMonth, day);
-                recordDate.setHours(
-                    Math.floor(Math.random() * 14) + 8, // 8AM - 10PM
-                    Math.floor(Math.random() * 60)
-                );
-                
-                const record = {
-                    id: recordId++,
-                    type: selectedType.type,
-                    icon: selectedType.icon,
-                    title: titles[selectedType.type][Math.floor(Math.random() * titles[selectedType.type].length)],
-                    categories: selectedCategories.length > 0 ? selectedCategories : ['其他'],
-                    duration,
-                    difficulty: Math.floor(Math.random() * 5) + 1,
-                    focus: Math.floor(Math.random() * 5) + 1,
-                    date: recordDate,
-                    time: recordDate.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
-                };
-                
-                this.records.push(record);
-            }
-        });
-        
-        // Sort by date (newest first)
-        this.records.sort((a, b) => b.date - a.date);
     }
+    
+    updateUserInfo() {
+        if (this.currentUser) {
+            document.querySelector('.user-name').textContent = this.currentUser.display_name || 'User';
+        }
+    }
+    
+    async loadData() {
+        try {
+            await Promise.all([
+                this.loadDashboardData(),
+                this.loadRecentRecords()
+            ]);
+        } catch (error) {
+            console.error('Failed to load data:', error);
+            this.showError('加载数据失败，请刷新页面重试');
+        }
+    }
+    
+    async loadDashboardData() {
+        try {
+            this.analytics = await apiClient.getDashboardAnalytics();
+            this.updateDashboard();
+        } catch (error) {
+            console.error('Failed to load analytics:', error);
+        }
+    }
+    
+    async loadRecentRecords() {
+        try {
+            this.records = await apiClient.getRecords({ limit: 10 });
+            this.renderRecentRecords();
+        } catch (error) {
+            console.error('Failed to load records:', error);
+        }
+    }
+
 
     setupEventListeners() {
         // Navigation
@@ -497,36 +362,14 @@ class LearningBuddyApp {
         
         // Update UI
         document.getElementById('todayDuration').textContent = todayDuration;
-        document.getElementById('todayRecords').textContent = todayRecords.length;
-        
-        document.getElementById('weekDuration').textContent = Math.round(weekDuration / 60 * 10) / 10; // Convert to hours with 1 decimal
-        document.getElementById('weekDays').textContent = weekDays;
-        
-        document.getElementById('monthDuration').textContent = Math.round(monthDuration / 60 * 10) / 10; // Convert to hours
-        document.getElementById('monthStreak').textContent = monthStreak;
-        
-        // Update streak badge
-        document.getElementById('streakDays').textContent = monthStreak;
+        document.getElementById('todayRecords').textContent = this.analytics.today.total_records || 0;
+        document.getElementById('weekDuration').textContent = this.analytics.week.total_duration || 0;
+        document.getElementById('weekDays').textContent = this.analytics.week.active_days || 0;
+        document.getElementById('monthDuration').textContent = this.analytics.month.total_duration || 0;
+        document.getElementById('monthStreak').textContent = this.analytics.month.streak_days || 0;
+        document.getElementById('streakDays').textContent = this.analytics.month.streak_days || 0;
     }
 
-    calculateStreak() {
-        // Simple streak calculation for prototype
-        const dates = [...new Set(this.records.map(r => r.date.toDateString()))];
-        let streak = 0;
-        const today = new Date();
-        
-        for (let i = 0; i < 30; i++) {
-            const checkDate = new Date(today);
-            checkDate.setDate(today.getDate() - i);
-            if (dates.includes(checkDate.toDateString())) {
-                streak++;
-            } else if (i > 0) {
-                break;
-            }
-        }
-        
-        return streak;
-    }
 
     renderRecentRecords() {
         const container = document.getElementById('recentRecordsList');

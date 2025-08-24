@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - 学习搭子</title>
+    <link rel="stylesheet" href="/static/styles/main.css">
+    <style>
+        .auth-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+        }
+        
+        .auth-card {
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+        
+        .auth-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        
+        .auth-logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 16px;
+            color: #667eea;
+        }
+        
+        .auth-logo svg {
+            width: 40px;
+            height: 40px;
+        }
+        
+        .auth-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin: 0;
+        }
+        
+        .auth-subtitle {
+            color: #666;
+            font-size: 16px;
+            margin: 8px 0 0 0;
+        }
+        
+        .auth-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .form-label {
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
+        
+        .form-input {
+            padding: 12px 16px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.2s ease;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .form-input.error {
+            border-color: #e74c3c;
+        }
+        
+        .error-message {
+            color: #e74c3c;
+            font-size: 14px;
+            margin-top: 4px;
+            display: none;
+        }
+        
+        .auth-tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 4px;
+            margin-bottom: 24px;
+        }
+        
+        .auth-tab {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            border: none;
+            background: transparent;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .auth-tab.active {
+            background: white;
+            color: #667eea;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .submit-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s ease;
+            margin-top: 8px;
+        }
+        
+        .submit-btn:hover {
+            opacity: 0.9;
+        }
+        
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .test-users {
+            margin-top: 24px;
+            padding: 16px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .test-users h4 {
+            margin: 0 0 12px 0;
+            font-size: 14px;
+            color: #667eea;
+            font-weight: 600;
+        }
+        
+        .test-user {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #e1e5e9;
+            font-size: 14px;
+        }
+        
+        .test-user:last-child {
+            border-bottom: none;
+        }
+        
+        .test-login-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        
+        .test-login-btn:hover {
+            background: #5a6fd8;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 12px;
+            color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <div class="auth-logo">
+                    <svg viewBox="0 0 40 40" width="40" height="40">
+                        <rect x="8" y="8" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"/>
+                        <circle cx="20" cy="20" r="6" fill="currentColor" opacity="0.8"/>
+                    </svg>
+                    <span style="font-size: 24px; font-weight: 700;">学习搭子</span>
+                </div>
+                <h1 class="auth-title">欢迎回来</h1>
+                <p class="auth-subtitle">记录学习，见证成长</p>
+            </div>
+            
+            <div class="auth-tabs">
+                <button class="auth-tab active" onclick="switchTab('login')">登录</button>
+                <button class="auth-tab" onclick="switchTab('register')">注册</button>
+            </div>
+            
+            <!-- Login Form -->
+            <form id="loginForm" class="auth-form">
+                <div class="form-group">
+                    <label class="form-label">邮箱</label>
+                    <input type="email" class="form-input" id="loginEmail" required>
+                    <div class="error-message" id="loginEmailError"></div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">密码</label>
+                    <input type="password" class="form-input" id="loginPassword" required>
+                    <div class="error-message" id="loginPasswordError"></div>
+                </div>
+                
+                <button type="submit" class="submit-btn">登录</button>
+            </form>
+            
+            <!-- Register Form -->
+            <form id="registerForm" class="auth-form" style="display: none;">
+                <div class="form-group">
+                    <label class="form-label">邮箱</label>
+                    <input type="email" class="form-input" id="registerEmail" required>
+                    <div class="error-message" id="registerEmailError"></div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">显示名称</label>
+                    <input type="text" class="form-input" id="registerDisplayName" placeholder="可选">
+                    <div class="error-message" id="registerDisplayNameError"></div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">密码</label>
+                    <input type="password" class="form-input" id="registerPassword" required>
+                    <div class="error-message" id="registerPasswordError"></div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">确认密码</label>
+                    <input type="password" class="form-input" id="registerConfirmPassword" required>
+                    <div class="error-message" id="registerConfirmPasswordError"></div>
+                </div>
+                
+                <button type="submit" class="submit-btn">注册</button>
+            </form>
+            
+            <div class="loading" id="loading">
+                <div>处理中...</div>
+            </div>
+            
+            <!-- Test Users Section -->
+            <div class="test-users">
+                <h4>🧪 测试账户 (开发用)</h4>
+                <div class="test-user">
+                    <span>test@example.com (含模拟数据)</span>
+                    <button class="test-login-btn" onclick="quickLogin('test@example.com', 'password123')">快速登录</button>
+                </div>
+                <div class="test-user">
+                    <span>wq@example.com (空用户)</span>
+                    <button class="test-login-btn" onclick="quickLogin('wq@example.com', 'password123')">快速登录</button>
+                </div>
+                <div class="test-user">
+                    <span>wistone@example.com (空用户)</span>
+                    <button class="test-login-btn" onclick="quickLogin('wistone@example.com', 'password123')">快速登录</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let currentTab = 'login';
+        const API_BASE = '/api';
+        
+        function switchTab(tab) {
+            currentTab = tab;
+            
+            // Update tab buttons
+            document.querySelectorAll('.auth-tab').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Show/hide forms
+            document.getElementById('loginForm').style.display = tab === 'login' ? 'flex' : 'none';
+            document.getElementById('registerForm').style.display = tab === 'register' ? 'flex' : 'none';
+            
+            // Clear errors
+            clearErrors();
+        }
+        
+        function clearErrors() {
+            document.querySelectorAll('.error-message').forEach(error => {
+                error.style.display = 'none';
+                error.textContent = '';
+            });
+            
+            document.querySelectorAll('.form-input').forEach(input => {
+                input.classList.remove('error');
+            });
+        }
+        
+        function showError(fieldId, message) {
+            const input = document.getElementById(fieldId);
+            const error = document.getElementById(fieldId + 'Error');
+            
+            input.classList.add('error');
+            error.textContent = message;
+            error.style.display = 'block';
+        }
+        
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+            document.querySelector('.submit-btn').disabled = show;
+        }
+        
+        async function apiCall(endpoint, method, data) {
+            const response = await fetch(`${API_BASE}${endpoint}`, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(result.detail || 'Request failed');
+            }
+            
+            return result;
+        }
+        
+        function handleAuthSuccess(data) {
+            // Store token and user info
+            localStorage.setItem('access_token', data.access_token);
+            localStorage.setItem('user', JSON.stringify(data.user));
+            
+            // Redirect to main app
+            window.location.href = '/';
+        }
+        
+        async function handleLogin(email, password) {
+            try {
+                showLoading(true);
+                clearErrors();
+                
+                // Try regular login first, fallback to demo-login
+                let data;
+                try {
+                    data = await apiCall('/auth/login', 'POST', {
+                        email: email,
+                        password: password
+                    });
+                } catch (error) {
+                    // Fallback to demo login for prototype
+                    data = await apiCall('/auth/demo-login', 'POST', {
+                        email: email,
+                        password: password
+                    });
+                }
+                
+                handleAuthSuccess(data);
+                
+            } catch (error) {
+                showError('loginPassword', error.message);
+                showLoading(false);
+            }
+        }
+        
+        async function handleRegister(email, password, displayName) {
+            try {
+                showLoading(true);
+                clearErrors();
+                
+                const data = await apiCall('/auth/register', 'POST', {
+                    email: email,
+                    password: password,
+                    display_name: displayName || null
+                });
+                
+                handleAuthSuccess(data);
+                
+            } catch (error) {
+                showError('registerEmail', error.message);
+                showLoading(false);
+            }
+        }
+        
+        function quickLogin(email, password) {
+            document.getElementById('loginEmail').value = email;
+            document.getElementById('loginPassword').value = password;
+            handleLogin(email, password);
+        }
+        
+        // Form event listeners
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            await handleLogin(email, password);
+        });
+        
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('registerEmail').value;
+            const password = document.getElementById('registerPassword').value;
+            const confirmPassword = document.getElementById('registerConfirmPassword').value;
+            const displayName = document.getElementById('registerDisplayName').value;
+            
+            // Validate passwords match
+            if (password !== confirmPassword) {
+                showError('registerConfirmPassword', '密码不匹配');
+                return;
+            }
+            
+            await handleRegister(email, password, displayName);
+        });
+        
+        // Check if already logged in
+        const token = localStorage.getItem('access_token');
+        if (token) {
+            // Verify token is still valid
+            fetch(`${API_BASE}/auth/me`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            }).then(response => {
+                if (response.ok) {
+                    window.location.href = '/';
+                } else {
+                    localStorage.removeItem('access_token');
+                    localStorage.removeItem('user');
+                }
+            });
+        }
+    </script>
+</body>
+</html>
