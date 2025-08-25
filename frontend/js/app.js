@@ -7,6 +7,7 @@ class LearningBuddyApp {
         this.records = [];
         this.currentMonth = new Date();
         this.currentPeriod = 'week'; // week, month, year
+        this.isSubmitting = false; // 防止重复提交
         this.init();
     }
 
@@ -114,7 +115,9 @@ class LearningBuddyApp {
         // Form submission
         document.getElementById('recordForm').addEventListener('submit', (e) => {
             e.preventDefault();
-            this.saveRecord();
+            if (!this.isSubmitting) {
+                this.saveRecord();
+            }
         });
 
         // Filters
@@ -124,6 +127,15 @@ class LearningBuddyApp {
 
         document.getElementById('searchInput')?.addEventListener('input', () => {
             this.filterRecords();
+        });
+
+        // Tag input handler
+        document.getElementById('tagInput')?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && e.target.value.trim()) {
+                e.preventDefault();
+                this.addTag(e.target.value.trim());
+                e.target.value = '';
+            }
         });
     }
 
@@ -249,10 +261,20 @@ class LearningBuddyApp {
     }
 
     async saveRecord() {
+        // 防止重复提交
+        if (this.isSubmitting) {
+            return;
+        }
+        
         try {
+            // 设置提交状态并禁用按钮
+            this.isSubmitting = true;
+            this.setSubmitButtonState(true);
+            
             // Collect form data
             const title = document.getElementById('recordTitle').value;
             const duration = parseInt(document.getElementById('recordDuration').value) || 30;
+            const mood = document.getElementById('recordMood').value || '';
             
             if (!title || !this.recordData.type) {
                 this.showError('请填写完整的记录信息');
@@ -265,8 +287,8 @@ class LearningBuddyApp {
                 duration_min: duration,
                 difficulty: this.recordData.difficulty || 3,
                 focus: this.recordData.focus || 3,
-                tags: this.recordData.tags ? this.recordData.tags.join(',') : '',
-                notes: this.recordData.notes || ''
+                tags: this.recordData.tags || [],
+                mood: mood
             };
             
             console.log('💾 保存记录:', recordPayload);
@@ -295,6 +317,10 @@ class LearningBuddyApp {
         } catch (error) {
             console.error('❌ 保存记录失败:', error);
             this.showError('保存失败: ' + window.apiService.formatError(error));
+        } finally {
+            // 重置提交状态并重新启用按钮
+            this.isSubmitting = false;
+            this.setSubmitButtonState(false);
         }
     }
 
@@ -341,6 +367,9 @@ class LearningBuddyApp {
         document.querySelectorAll('.type-btn').forEach(btn => btn.classList.remove('selected'));
         this.recordData = {};
         this.currentStep = 1;
+        // 重置提交状态
+        this.isSubmitting = false;
+        this.setSubmitButtonState(false);
     }
 
     showSuccessMessage(message = '记录保存成功！') {
@@ -409,6 +438,23 @@ class LearningBuddyApp {
         } else {
             if (loadingElement) {
                 loadingElement.remove();
+            }
+        }
+    }
+    
+    setSubmitButtonState(isSubmitting) {
+        const submitBtn = document.querySelector('.record-form button[type="submit"]');
+        if (submitBtn) {
+            if (isSubmitting) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = '提交中...';
+                submitBtn.style.opacity = '0.6';
+                submitBtn.style.cursor = 'not-allowed';
+            } else {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '完成记录';
+                submitBtn.style.opacity = '1';
+                submitBtn.style.cursor = 'pointer';
             }
         }
     }

@@ -34,6 +34,7 @@ class RecordCreate(BaseModel):
     energy: Optional[int] = Field(None, ge=1, le=5)
     privacy: PrivacyLevel = PrivacyLevel.private
     assets: Optional[Dict[str, Any]] = None
+    tags: Optional[List[str]] = None
 
 class RecordResponse(BaseModel):
     record_id: int

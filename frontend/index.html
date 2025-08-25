@@ -336,8 +336,14 @@
                     <!-- Form Record -->
                     <div id="formRecord" class="tab-content active">
                         <form id="recordForm" class="record-form">
-                            <!-- Step 1: Type -->
+                            <!-- Step 1: Title -->
                             <div class="form-step active" data-step="1">
+                                <label class="form-label">标题</label>
+                                <input type="text" class="form-input" id="recordTitle" placeholder="输入学习内容标题..." required>
+                            </div>
+
+                            <!-- Step 2: Type -->
+                            <div class="form-step" data-step="2">
                                 <label class="form-label">选择形式类别</label>
                                 <div class="type-grid">
                                     <button type="button" class="type-btn" data-type="video">📹 视频</button>
@@ -352,11 +358,11 @@
                                 </div>
                             </div>
 
-                            <!-- Step 2: Categories -->
-                            <div class="form-step" data-step="2">
+                            <!-- Step 3: Categories -->
+                            <div class="form-step" data-step="3">
                                 <label class="form-label">内容标签（可多选）</label>
                                 <div class="tag-input-container">
-                                    <input type="text" class="tag-input" placeholder="输入标签，如：英语、编程、AI...">
+                                    <input type="text" class="tag-input" id="tagInput" placeholder="输入标签，如：英语、编程、AI...">
                                     <div class="tag-suggestions">
                                         <span class="tag-suggestion">英语</span>
                                         <span class="tag-suggestion">AI</span>
@@ -366,12 +372,6 @@
                                     </div>
                                 </div>
                                 <div class="selected-tags" id="selectedTags"></div>
-                            </div>
-
-                            <!-- Step 3: Title -->
-                            <div class="form-step" data-step="3">
-                                <label class="form-label">标题</label>
-                                <input type="text" class="form-input" id="recordTitle" placeholder="输入学习内容标题..." required>
                             </div>
 
                             <!-- Step 4: Duration -->
@@ -386,7 +386,7 @@
                                 </div>
                             </div>
 
-                            <!-- Optional Fields -->
+                            <!-- Step 5: Feedback -->
                             <div class="form-step" data-step="5">
                                 <label class="form-label">反馈（可选）</label>
                                 <div class="feedback-grid">
@@ -411,7 +411,7 @@
                                         </div>
                                     </div>
                                 </div>
-                                <textarea class="form-textarea" placeholder="记录你的思考和感受..."></textarea>
+                                <textarea class="form-textarea" id="recordMood" placeholder="记录你的思考和感受..."></textarea>
                             </div>
 
                             <!-- Form Navigation -->
@@ -444,11 +444,11 @@
     <!-- Include Environment Variables -->
     <script src="js/env.js"></script>
     <!-- Include Authentication Service -->
-    <script src="js/auth.js?v=20250825-5"></script>
+    <script src="js/auth.js?v=20250825-6"></script>
     <!-- Include API Service -->
-    <script src="js/api-service.js?v=20250825-5"></script>
+    <script src="js/api-service.js?v=20250825-6"></script>
     <!-- Include Main Application -->
-    <script src="js/app.js?v=20250825-5"></script>
+    <script src="js/app.js?v=20250825-8"></script>
     
     <script>
         let isRedirecting = false; // 防止重复重定向
