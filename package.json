@@ -1,0 +1,14 @@
+{
+  "name": "recordstudy",
+  "version": "1.0.0",
+  "description": "学习搭子 - 记录每一步成长",
+  "main": "index.js",
+  "scripts": {
+    "start": "python3 -m http.server 3000 --directory frontend"
+  },
+  "dependencies": {},
+  "devDependencies": {},
+  "keywords": ["learning", "study", "record", "supabase", "javascript"],
+  "author": "",
+  "license": "MIT"
+}

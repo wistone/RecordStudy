@@ -28,11 +28,43 @@
                         <span class="streak-icon">🔥</span>
                         <span id="streakDays">0</span>天
                     </div>
-                    <div class="user-profile">
+                    <div class="user-profile" onclick="toggleUserMenu()">
                         <div class="user-avatar">
                             <span class="avatar-icon">👤</span>
                         </div>
                         <span class="user-name">学习者</span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="dropdown-arrow">
+                            <polyline points="6,9 12,15 18,9"></polyline>
+                        </svg>
+                    </div>
+                    
+                    <!-- User Menu Dropdown -->
+                    <div id="userMenu" class="user-menu">
+                        <div class="user-menu-header">
+                            <div class="user-menu-avatar">
+                                <span class="avatar-icon">👤</span>
+                            </div>
+                            <div class="user-menu-info">
+                                <div class="user-menu-name">学习者</div>
+                                <div class="user-menu-email">demo@example.com</div>
+                            </div>
+                        </div>
+                        <div class="user-menu-divider"></div>
+                        <div class="user-menu-items">
+                            <a href="#" class="user-menu-item" onclick="showProfile()">
+                                <span class="menu-icon">👤</span>
+                                个人资料
+                            </a>
+                            <a href="#" class="user-menu-item" onclick="showSettings()">
+                                <span class="menu-icon">⚙️</span>
+                                设置
+                            </a>
+                            <div class="user-menu-divider"></div>
+                            <a href="#" class="user-menu-item logout" onclick="handleLogout()">
+                                <span class="menu-icon">🚪</span>
+                                退出登录
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -407,6 +439,116 @@
         </div>
     </div>
 
+    <!-- Include Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Include Environment Variables -->
+    <script src="js/env.js"></script>
+    <!-- Include Authentication Service -->
+    <script src="js/auth.js"></script>
+    <!-- Include Main Application -->
     <script src="js/app.js"></script>
+    
+    <script>
+        let isRedirecting = false; // 防止重复重定向
+
+        // Authentication check and redirect logic
+        document.addEventListener('DOMContentLoaded', () => {
+            // 延迟检查，确保认证服务完全初始化
+            setTimeout(() => {
+                console.log('🔍 检查首页认证状态:', authService.isAuthenticated());
+                
+                // Check authentication status
+                if (!authService.isAuthenticated() && !isRedirecting) {
+                    console.log('❌ 未登录，重定向到登录页');
+                    isRedirecting = true;
+                    window.location.href = 'login.html';
+                    return;
+                }
+                
+                // 如果已登录，更新用户显示
+                if (authService.isAuthenticated()) {
+                    updateUserDisplay(authService.getCurrentUser());
+                }
+                
+                // 监听认证状态变化
+                authService.onAuthStateChange((user) => {
+                    console.log('👤 首页认证状态变化:', !!user);
+                    if (!user && !isRedirecting) {
+                        isRedirecting = true;
+                        window.location.href = 'login.html';
+                    } else if (user) {
+                        updateUserDisplay(user);
+                    }
+                });
+            }, 100);
+        });
+        
+        function updateUserDisplay(user) {
+            const displayName = authService.getDisplayName();
+            const userEmail = user?.email || 'demo@example.com';
+            
+            // Update main user name
+            const userNameElement = document.querySelector('.user-name');
+            if (userNameElement && displayName) {
+                userNameElement.textContent = displayName;
+            }
+            
+            // Update dropdown menu info
+            const menuNameElement = document.querySelector('.user-menu-name');
+            const menuEmailElement = document.querySelector('.user-menu-email');
+            if (menuNameElement && displayName) {
+                menuNameElement.textContent = displayName;
+            }
+            if (menuEmailElement && userEmail) {
+                menuEmailElement.textContent = userEmail;
+            }
+        }
+        
+        // User menu functions
+        function toggleUserMenu() {
+            const userMenu = document.getElementById('userMenu');
+            const userProfile = document.querySelector('.user-profile');
+            
+            userMenu.classList.toggle('show');
+            userProfile.classList.toggle('open');
+        }
+        
+        // Close menu when clicking outside
+        document.addEventListener('click', (event) => {
+            const userMenu = document.getElementById('userMenu');
+            const userProfile = document.querySelector('.user-profile');
+            
+            if (!userProfile.contains(event.target)) {
+                userMenu.classList.remove('show');
+                userProfile.classList.remove('open');
+            }
+        });
+        
+        async function handleLogout() {
+            if (confirm('确定要退出登录吗？')) {
+                try {
+                    const { error } = await authService.signOut();
+                    if (error) {
+                        alert('退出登录失败，请重试');
+                    } else {
+                        // 成功登出，会自动跳转到登录页面
+                        window.location.href = 'login.html';
+                    }
+                } catch (error) {
+                    alert('退出登录失败，请重试');
+                }
+            }
+        }
+        
+        function showProfile() {
+            alert('个人资料功能正在开发中...');
+            toggleUserMenu(); // Close the menu
+        }
+        
+        function showSettings() {
+            alert('设置功能正在开发中...');
+            toggleUserMenu(); // Close the menu
+        }
+    </script>
 </body>
 </html>

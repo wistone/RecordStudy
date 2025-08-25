@@ -101,6 +101,7 @@ body {
     display: flex;
     align-items: center;
     gap: 16px;
+    position: relative;
 }
 
 .streak-badge {
@@ -148,6 +149,112 @@ body {
     font-size: 14px;
     font-weight: 500;
     color: var(--text-primary);
+}
+
+.dropdown-arrow {
+    transition: transform 0.2s ease;
+    color: var(--text-secondary);
+}
+
+.user-profile.open .dropdown-arrow {
+    transform: rotate(180deg);
+}
+
+/* User Menu Dropdown */
+.user-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    min-width: 280px;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.2s ease;
+}
+
+.user-menu.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.user-menu-header {
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.user-menu-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 18px;
+}
+
+.user-menu-info {
+    flex: 1;
+}
+
+.user-menu-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+}
+
+.user-menu-email {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.user-menu-divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: 8px 16px;
+}
+
+.user-menu-items {
+    padding: 8px 0;
+}
+
+.user-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    color: var(--text-primary);
+    text-decoration: none;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.user-menu-item:hover {
+    background: var(--bg-tertiary);
+}
+
+.user-menu-item.logout {
+    color: #ef4444;
+}
+
+.user-menu-item.logout:hover {
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.menu-icon {
+    font-size: 16px;
+    width: 20px;
+    text-align: center;
 }
 
 /* Container */

@@ -1,0 +1,8 @@
+// Supabase环境变量配置
+window.ENV = {
+    SUPABASE_URL: 'https://rrkpxsjfuiptuufatnmx.supabase.co',
+    SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJya3B4c2pmdWlwdHV1ZmF0bm14Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYwNDUzMjAsImV4cCI6MjA3MTYyMTMyMH0.x5TP-elB9X6j2BkA_ejrazkTBE-QKPRjyK_GeShIzpU',
+    NODE_ENV: 'development'
+};
+
+console.log('✅ Supabase环境变量已加载');

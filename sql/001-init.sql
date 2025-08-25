@@ -1,3 +1,26 @@
+-- ------------ 简化版数据库重置 ------------
+-- 仅删除明确的应用表和类型，不进行通用清理
+
+-- 删除应用表
+DROP TABLE IF EXISTS public.user_summaries CASCADE;
+DROP TABLE IF EXISTS public.resource_tags CASCADE;
+DROP TABLE IF EXISTS public.tags CASCADE;
+DROP TABLE IF EXISTS public.records CASCADE;
+DROP TABLE IF EXISTS public.user_resources CASCADE;
+DROP TABLE IF EXISTS public.resources CASCADE;
+DROP TABLE IF EXISTS public.profiles CASCADE;
+
+-- 删除应用触发器函数
+DROP FUNCTION IF EXISTS public.set_updated_at() CASCADE;
+
+-- 删除应用自定义类型
+DROP TYPE IF EXISTS public.resource_type CASCADE;
+DROP TYPE IF EXISTS public.privacy_level CASCADE;
+DROP TYPE IF EXISTS public.resource_status CASCADE;
+DROP TYPE IF EXISTS public.summary_period CASCADE;
+DROP TYPE IF EXISTS public.asset_type CASCADE;
+DROP TYPE IF EXISTS public.tag_type CASCADE;
+
 -- ------------ 基础扩展（建议启用） ------------
 create extension if not exists pg_trgm;   -- 中文/英文都受益的模糊搜索
 create extension if not exists citext;    -- 大小写不敏感文本（如平台ID）
@@ -53,7 +76,7 @@ create table if not exists public.resources (
   updated_at timestamptz not null default now()
 );
 
--- URL/ISBN/平台ID的“部分唯一索引”，三者任一命中即可避免重复
+-- URL/ISBN/平台ID的"部分唯一索引"，三者任一命中即可避免重复
 create unique index if not exists uq_resources_normalized_url
   on public.resources (normalized_url)
   where normalized_url is not null;
@@ -69,7 +92,7 @@ create unique index if not exists uq_resources_platform_key
 create index if not exists idx_resources_title_trgm
   on public.resources using gin (title gin_trgm_ops);
 
--- ------------ 用户-资源关系（把“状态/评分/进度”放在这里；一人一份） ------------
+-- ------------ 用户-资源关系（把"状态/评分/进度"放在这里；一人一份） ------------
 create table if not exists public.user_resources (
   user_resource_id bigserial primary key,
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -94,7 +117,7 @@ create table if not exists public.records (
   record_id bigserial primary key,
   user_id uuid not null references auth.users(id) on delete cascade,
   resource_id bigint references public.resources(resource_id) on delete set null, -- 随手记可能还没绑定资源
-  form_type resource_type not null,                 -- 记录的“形式类别”，用于兜底统计
+  form_type resource_type not null,                 -- 记录的"形式类别"，用于兜底统计
   title text not null,
   body_md text,
   occurred_at timestamptz not null default now(),
@@ -147,7 +170,7 @@ create unique index if not exists uq_tags_name_creator
 
 create table if not exists public.resource_tags (
   resource_tag_id bigserial primary key,
-  user_id uuid not null references auth.users(id) on delete cascade,   -- 标签归属到“人”
+  user_id uuid not null references auth.users(id) on delete cascade,   -- 标签归属到"人"
   resource_id bigint not null references public.resources(resource_id) on delete cascade,
   tag_id bigint not null references public.tags(tag_id) on delete cascade,
   created_at timestamptz not null default now(),
@@ -157,7 +180,7 @@ create table if not exists public.resource_tags (
 create index if not exists idx_resource_tags_user_resource
   on public.resource_tags (user_id, resource_id);
 
--- ------------ 总结/报表（为“日卡/周报”预计算，读起来快） ------------
+-- ------------ 总结/报表（为"日卡/周报"预计算，读起来快） ------------
 create table if not exists public.user_summaries (
   summary_id bigserial primary key,
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -250,7 +273,7 @@ do $$ begin
     for all using (created_by = auth.uid()) with check (created_by = auth.uid());
 exception when duplicate_object then null; end $$;
 
--- resource_tags：仅本人可见可改（因为标注是“按人”的）
+-- resource_tags：仅本人可见可改（因为标注是"按人"的）
 do $$ begin
   create policy "resource_tags_owner_rw" on public.resource_tags
     for all using (user_id = auth.uid()) with check (user_id = auth.uid());

@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - 学习搭子</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <style>
+        /* 登录页面特定样式 */
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .login-container {
+            background: var(--bg-primary);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            width: 100%;
+            max-width: 400px;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .login-header {
+            margin-bottom: 32px;
+        }
+
+        .login-logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .login-logo svg {
+            color: var(--primary-color);
+        }
+
+        .login-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .login-subtitle {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .auth-tabs {
+            display: flex;
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-md);
+            padding: 4px;
+            margin-bottom: 24px;
+        }
+
+        .auth-tab {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            background: none;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .auth-tab.active {
+            background: var(--bg-primary);
+            color: var(--primary-color);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .auth-form {
+            display: none;
+        }
+
+        .auth-form.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            transition: all 0.2s;
+            background: var(--bg-primary);
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .form-input.error {
+            border-color: #ef4444;
+        }
+
+        .form-error {
+            color: #ef4444;
+            font-size: 12px;
+            margin-top: 4px;
+            display: none;
+        }
+
+        .form-error.show {
+            display: block;
+        }
+
+        .password-strength {
+            margin-top: 8px;
+            display: none;
+        }
+
+        .password-strength.show {
+            display: block;
+        }
+
+        .strength-bar {
+            height: 4px;
+            background: var(--bg-tertiary);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 4px;
+        }
+
+        .strength-fill {
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s ease, background-color 0.3s ease;
+        }
+
+        .strength-text {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .auth-button {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: var(--radius-md);
+            background: var(--primary-color);
+            color: white;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 16px;
+        }
+
+        .auth-button:hover:not(:disabled) {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+
+        .auth-button:disabled {
+            background: var(--text-tertiary);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .auth-loading {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .auth-loading.show {
+            display: flex;
+        }
+
+        .loading-spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .forgot-password {
+            text-align: center;
+            margin-top: 16px;
+        }
+
+        .forgot-password a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .forgot-password a:hover {
+            text-decoration: underline;
+        }
+
+        .divider {
+            margin: 24px 0;
+            text-align: center;
+            position: relative;
+        }
+
+        .divider::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: var(--border-color);
+        }
+
+        .divider span {
+            background: var(--bg-primary);
+            color: var(--text-secondary);
+            padding: 0 16px;
+            font-size: 14px;
+        }
+
+        .demo-notice {
+            background: rgba(37, 99, 235, 0.1);
+            border: 1px solid rgba(37, 99, 235, 0.2);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            margin-top: 20px;
+            text-align: left;
+        }
+
+        .demo-notice h4 {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-bottom: 8px;
+        }
+
+        .demo-notice p {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            margin-bottom: 8px;
+        }
+
+        .demo-notice code {
+            background: rgba(37, 99, 235, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .success-message {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            color: var(--secondary-color);
+            padding: 12px 16px;
+            border-radius: var(--radius-md);
+            margin-bottom: 16px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .success-message.show {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <!-- Header -->
+        <div class="login-header">
+            <div class="login-logo">
+                <svg viewBox="0 0 40 40" width="32" height="32">
+                    <rect x="8" y="8" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"/>
+                    <circle cx="20" cy="20" r="6" fill="currentColor" opacity="0.8"/>
+                </svg>
+                <span class="login-title">学习搭子</span>
+            </div>
+            <p class="login-subtitle">记录学习，见证成长</p>
+        </div>
+
+        <!-- Auth Tabs -->
+        <div class="auth-tabs">
+            <button class="auth-tab active" data-tab="login">登录</button>
+            <button class="auth-tab" data-tab="register">注册</button>
+        </div>
+
+        <!-- Success Message -->
+        <div id="successMessage" class="success-message"></div>
+
+        <!-- Login Form -->
+        <form id="loginForm" class="auth-form active">
+            <div class="form-group">
+                <label class="form-label" for="loginEmail">邮箱</label>
+                <input 
+                    type="email" 
+                    id="loginEmail" 
+                    class="form-input" 
+                    placeholder="请输入邮箱地址"
+                    required
+                >
+                <div class="form-error" id="loginEmailError"></div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="loginPassword">密码</label>
+                <input 
+                    type="password" 
+                    id="loginPassword" 
+                    class="form-input" 
+                    placeholder="请输入密码"
+                    required
+                >
+                <div class="form-error" id="loginPasswordError"></div>
+            </div>
+
+            <button type="submit" class="auth-button" id="loginButton">
+                <span class="button-text">登录</span>
+                <div class="auth-loading">
+                    <div class="loading-spinner"></div>
+                    <span>登录中...</span>
+                </div>
+            </button>
+
+            <div class="forgot-password">
+                <a href="#" id="forgotPasswordLink">忘记密码？</a>
+            </div>
+        </form>
+
+        <!-- Register Form -->
+        <form id="registerForm" class="auth-form">
+            <div class="form-group">
+                <label class="form-label" for="registerName">姓名</label>
+                <input 
+                    type="text" 
+                    id="registerName" 
+                    class="form-input" 
+                    placeholder="请输入姓名"
+                    required
+                >
+                <div class="form-error" id="registerNameError"></div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="registerEmail">邮箱</label>
+                <input 
+                    type="email" 
+                    id="registerEmail" 
+                    class="form-input" 
+                    placeholder="请输入邮箱地址"
+                    required
+                >
+                <div class="form-error" id="registerEmailError"></div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="registerPassword">密码</label>
+                <input 
+                    type="password" 
+                    id="registerPassword" 
+                    class="form-input" 
+                    placeholder="请输入密码（至少6位）"
+                    required
+                >
+                <div class="form-error" id="registerPasswordError"></div>
+                <div class="password-strength" id="passwordStrength">
+                    <div class="strength-bar">
+                        <div class="strength-fill"></div>
+                    </div>
+                    <div class="strength-text">密码强度</div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="confirmPassword">确认密码</label>
+                <input 
+                    type="password" 
+                    id="confirmPassword" 
+                    class="form-input" 
+                    placeholder="请再次输入密码"
+                    required
+                >
+                <div class="form-error" id="confirmPasswordError"></div>
+            </div>
+
+            <button type="submit" class="auth-button" id="registerButton">
+                <span class="button-text">注册</span>
+                <div class="auth-loading">
+                    <div class="loading-spinner"></div>
+                    <span>注册中...</span>
+                </div>
+            </button>
+        </form>
+
+        <!-- Demo Notice -->
+        <div class="demo-notice">
+            <h4>演示模式</h4>
+            <p>当前为演示模式，你可以使用任意邮箱和密码进行测试。</p>
+            <p>建议使用: <code>demo@example.com</code> / <code>abc123</code></p>
+        </div>
+    </div>
+
+    <!-- Include Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Include Environment Variables -->
+    <script src="js/env.js"></script>
+    <!-- Include Authentication Service -->
+    <script src="js/auth.js"></script>
+    
+    <script>
+        class LoginPage {
+            constructor() {
+                this.currentTab = 'login';
+                this.init();
+            }
+
+            init() {
+                this.setupEventListeners();
+                this.checkAuthState();
+            }
+
+            setupEventListeners() {
+                // Tab switching
+                document.querySelectorAll('.auth-tab').forEach(tab => {
+                    tab.addEventListener('click', (e) => {
+                        this.switchTab(e.target.dataset.tab);
+                    });
+                });
+
+                // Form submissions
+                document.getElementById('loginForm').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.handleLogin();
+                });
+
+                document.getElementById('registerForm').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.handleRegister();
+                });
+
+                // Password strength indicator
+                document.getElementById('registerPassword').addEventListener('input', (e) => {
+                    this.updatePasswordStrength(e.target.value);
+                });
+
+                // Real-time validation
+                this.setupRealTimeValidation();
+
+                // Forgot password
+                document.getElementById('forgotPasswordLink').addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.handleForgotPassword();
+                });
+            }
+
+            switchTab(tab) {
+                if (this.currentTab === tab) return;
+
+                // Update tab buttons
+                document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+                document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+
+                // Update forms
+                document.querySelectorAll('.auth-form').forEach(form => form.classList.remove('active'));
+                document.getElementById(`${tab}Form`).classList.add('active');
+
+                this.currentTab = tab;
+                this.clearErrors();
+            }
+
+            async handleLogin() {
+                const email = document.getElementById('loginEmail').value.trim();
+                const password = document.getElementById('loginPassword').value;
+
+                if (!this.validateLoginForm(email, password)) {
+                    return;
+                }
+
+                this.setLoading('login', true);
+                
+                try {
+                    const { data, error } = await authService.signIn(email, password);
+                    
+                    if (error) {
+                        this.showError('loginPasswordError', error.message || '登录失败，请检查邮箱和密码');
+                    } else {
+                        this.showSuccess('登录成功，正在跳转...');
+                        setTimeout(() => {
+                            window.location.href = 'index.html';
+                        }, 1500);
+                    }
+                } catch (error) {
+                    this.showError('loginPasswordError', '登录失败，请稍后重试');
+                } finally {
+                    this.setLoading('login', false);
+                }
+            }
+
+            async handleRegister() {
+                const name = document.getElementById('registerName').value.trim();
+                const email = document.getElementById('registerEmail').value.trim();
+                const password = document.getElementById('registerPassword').value;
+                const confirmPassword = document.getElementById('confirmPassword').value;
+
+                if (!this.validateRegisterForm(name, email, password, confirmPassword)) {
+                    return;
+                }
+
+                this.setLoading('register', true);
+
+                try {
+                    const { data, error } = await authService.signUp(email, password, name);
+                    
+                    if (error) {
+                        this.showError('registerEmailError', error.message || '注册失败，请重试');
+                    } else {
+                        this.showSuccess('注册成功！正在为您自动登录...');
+                        
+                        // Supabase 注册后用户已经自动登录
+                        // 直接重定向到首页，不需要再次登录
+                        setTimeout(() => {
+                            console.log('📝 注册成功，重定向到首页');
+                            window.location.href = 'index.html';
+                        }, 1500);
+                    }
+                } catch (error) {
+                    this.showError('registerEmailError', '注册失败，请稍后重试');
+                } finally {
+                    this.setLoading('register', false);
+                }
+            }
+
+            validateLoginForm(email, password) {
+                let valid = true;
+
+                if (!email) {
+                    this.showError('loginEmailError', '请输入邮箱地址');
+                    valid = false;
+                } else if (!authService.validateEmail(email)) {
+                    this.showError('loginEmailError', '请输入有效的邮箱地址');
+                    valid = false;
+                } else {
+                    this.hideError('loginEmailError');
+                }
+
+                if (!password) {
+                    this.showError('loginPasswordError', '请输入密码');
+                    valid = false;
+                } else {
+                    this.hideError('loginPasswordError');
+                }
+
+                return valid;
+            }
+
+            validateRegisterForm(name, email, password, confirmPassword) {
+                let valid = true;
+
+                if (!name) {
+                    this.showError('registerNameError', '请输入姓名');
+                    valid = false;
+                } else {
+                    this.hideError('registerNameError');
+                }
+
+                if (!email) {
+                    this.showError('registerEmailError', '请输入邮箱地址');
+                    valid = false;
+                } else if (!authService.validateEmail(email)) {
+                    this.showError('registerEmailError', '请输入有效的邮箱地址');
+                    valid = false;
+                } else {
+                    this.hideError('registerEmailError');
+                }
+
+                const passwordValidation = authService.validatePassword(password);
+                if (!passwordValidation.valid) {
+                    this.showError('registerPasswordError', passwordValidation.errors.join('，'));
+                    valid = false;
+                } else {
+                    this.hideError('registerPasswordError');
+                }
+
+                if (password !== confirmPassword) {
+                    this.showError('confirmPasswordError', '两次输入的密码不一致');
+                    valid = false;
+                } else {
+                    this.hideError('confirmPasswordError');
+                }
+
+                return valid;
+            }
+
+            updatePasswordStrength(password) {
+                const strengthIndicator = document.getElementById('passwordStrength');
+                const strengthFill = strengthIndicator.querySelector('.strength-fill');
+                const strengthText = strengthIndicator.querySelector('.strength-text');
+
+                if (!password) {
+                    strengthIndicator.classList.remove('show');
+                    return;
+                }
+
+                strengthIndicator.classList.add('show');
+
+                let strength = 0;
+                let text = '弱';
+                let color = '#ef4444';
+
+                // 长度检查
+                if (password.length >= 6) strength += 25;
+                if (password.length >= 8) strength += 15;
+
+                // 字符类型检查
+                if (/[a-z]/.test(password)) strength += 15;
+                if (/[A-Z]/.test(password)) strength += 15;
+                if (/\d/.test(password)) strength += 15;
+                if (/[^A-Za-z\d]/.test(password)) strength += 15;
+
+                if (strength >= 75) {
+                    text = '强';
+                    color = '#10b981';
+                } else if (strength >= 50) {
+                    text = '中';
+                    color = '#f59e0b';
+                }
+
+                strengthFill.style.width = `${Math.min(strength, 100)}%`;
+                strengthFill.style.backgroundColor = color;
+                strengthText.textContent = `密码强度：${text}`;
+            }
+
+            setupRealTimeValidation() {
+                // Email validation
+                document.getElementById('loginEmail').addEventListener('blur', (e) => {
+                    const email = e.target.value.trim();
+                    if (email && !authService.validateEmail(email)) {
+                        this.showError('loginEmailError', '请输入有效的邮箱地址');
+                    } else {
+                        this.hideError('loginEmailError');
+                    }
+                });
+
+                document.getElementById('registerEmail').addEventListener('blur', (e) => {
+                    const email = e.target.value.trim();
+                    if (email && !authService.validateEmail(email)) {
+                        this.showError('registerEmailError', '请输入有效的邮箱地址');
+                    } else {
+                        this.hideError('registerEmailError');
+                    }
+                });
+
+                // Password confirmation
+                document.getElementById('confirmPassword').addEventListener('input', (e) => {
+                    const password = document.getElementById('registerPassword').value;
+                    const confirmPassword = e.target.value;
+                    
+                    if (confirmPassword && password !== confirmPassword) {
+                        this.showError('confirmPasswordError', '两次输入的密码不一致');
+                    } else {
+                        this.hideError('confirmPasswordError');
+                    }
+                });
+            }
+
+            async handleForgotPassword() {
+                const email = document.getElementById('loginEmail').value.trim();
+                
+                if (!email) {
+                    this.showError('loginEmailError', '请先输入邮箱地址');
+                    return;
+                }
+
+                if (!authService.validateEmail(email)) {
+                    this.showError('loginEmailError', '请输入有效的邮箱地址');
+                    return;
+                }
+
+                try {
+                    const { error } = await authService.resetPassword(email);
+                    
+                    if (error) {
+                        this.showError('loginEmailError', '发送重置邮件失败，请稍后重试');
+                    } else {
+                        this.showSuccess('密码重置邮件已发送，请检查您的邮箱');
+                    }
+                } catch (error) {
+                    this.showError('loginEmailError', '发送重置邮件失败，请稍后重试');
+                }
+            }
+
+            showError(fieldId, message) {
+                const errorElement = document.getElementById(fieldId);
+                const inputElement = errorElement.previousElementSibling;
+                
+                errorElement.textContent = message;
+                errorElement.classList.add('show');
+                inputElement.classList.add('error');
+            }
+
+            hideError(fieldId) {
+                const errorElement = document.getElementById(fieldId);
+                const inputElement = errorElement.previousElementSibling;
+                
+                errorElement.classList.remove('show');
+                inputElement.classList.remove('error');
+            }
+
+            showSuccess(message) {
+                const successElement = document.getElementById('successMessage');
+                successElement.textContent = message;
+                successElement.classList.add('show');
+                
+                setTimeout(() => {
+                    successElement.classList.remove('show');
+                }, 5000);
+            }
+
+            clearErrors() {
+                document.querySelectorAll('.form-error').forEach(error => {
+                    error.classList.remove('show');
+                });
+                document.querySelectorAll('.form-input').forEach(input => {
+                    input.classList.remove('error');
+                });
+            }
+
+            setLoading(formType, loading) {
+                const button = document.getElementById(`${formType}Button`);
+                const buttonText = button.querySelector('.button-text');
+                const loadingDiv = button.querySelector('.auth-loading');
+
+                if (loading) {
+                    button.disabled = true;
+                    buttonText.style.display = 'none';
+                    loadingDiv.classList.add('show');
+                } else {
+                    button.disabled = false;
+                    buttonText.style.display = 'inline';
+                    loadingDiv.classList.remove('show');
+                }
+            }
+
+            checkAuthState() {
+                // 延迟检查，避免与注册流程冲突
+                setTimeout(() => {
+                    console.log('🔍 检查登录页认证状态:', authService.isAuthenticated());
+                    
+                    // 检查是否已登录
+                    if (authService.isAuthenticated()) {
+                        console.log('✅ 已登录，重定向到首页');
+                        window.location.href = 'index.html';
+                    }
+                }, 200);
+            }
+        }
+
+        // 初始化登录页面
+        document.addEventListener('DOMContentLoaded', () => {
+            new LoginPage();
+        });
+    </script>
+</body>
+</html>
