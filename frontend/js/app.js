@@ -10,203 +10,60 @@ class LearningBuddyApp {
         this.init();
     }
 
-    init() {
-        this.loadMockData();
+    async init() {
+        await this.loadData();
         this.setupEventListeners();
         this.updateDashboard();
         this.renderRecentRecords();
-        this.renderCalendar();
     }
 
-    // Generate Rich Mock Data for Prototype (30% of month coverage)
-    loadMockData() {
-        const today = new Date();
-        const currentMonth = today.getMonth();
-        const currentYear = today.getFullYear();
-        const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-        
-        // Generate learning days (30% coverage)
-        const learningDays = [];
-        const targetDays = Math.floor(daysInMonth * 0.3);
-        
-        // Ensure today and recent days are included
-        for (let i = 0; i < Math.min(3, targetDays); i++) {
-            learningDays.push(today.getDate() - i);
+    // Load data from backend API
+    async loadData() {
+        try {
+            this.showLoading(true);
+            
+            // 获取最近30天的学习记录
+            const response = await window.apiService.getRecords({ limit: 100, days: 30 });
+            this.records = response.records ? response.records.map(record => this.convertBackendRecord(record)) : [];
+            
+            console.log('📊 已加载学习记录:', this.records.length, '条');
+            
+        } catch (error) {
+            console.error('❌ 加载数据失败:', error);
+            this.showError('加载数据失败，请检查网络连接和后端服务');
+            this.records = []; // 显示空状态
+        } finally {
+            this.showLoading(false);
         }
-        
-        // Add random days throughout the month
-        while (learningDays.length < targetDays) {
-            const randomDay = Math.floor(Math.random() * daysInMonth) + 1;
-            if (!learningDays.includes(randomDay) && randomDay > 0) {
-                learningDays.push(randomDay);
-            }
-        }
-        
-        const types = [
-            { type: 'video', icon: '📹', weight: 0.35 },
-            { type: 'book', icon: '📚', weight: 0.20 },
-            { type: 'course', icon: '🎓', weight: 0.15 },
-            { type: 'podcast', icon: '🎙️', weight: 0.10 },
-            { type: 'article', icon: '📄', weight: 0.08 },
-            { type: 'exercise', icon: '✏️', weight: 0.07 },
-            { type: 'project', icon: '💻', weight: 0.05 }
-        ];
-        
-        const categories = [
-            { name: 'AI', weight: 0.25 },
-            { name: '编程', weight: 0.20 },
-            { name: '数学', weight: 0.15 },
-            { name: '英语', weight: 0.12 },
-            { name: '机器学习', weight: 0.10 },
-            { name: '算法', weight: 0.08 },
-            { name: '数据科学', weight: 0.05 },
-            { name: '产品设计', weight: 0.03 },
-            { name: '历史', weight: 0.02 }
-        ];
-        
-        const titles = {
-            video: [
-                'MIT 6.001 Structure and Interpretation',
-                'CS50 Introduction to Computer Science',
-                '3Blue1Brown - 线性代数的本质',
-                'Andrew Ng - Deep Learning Course',
-                'Python 数据结构与算法',
-                'React 18 完整教程',
-                'TED Talk - The Future of AI'
-            ],
-            book: [
-                '深度学习入门：基于Python的理论与实现',
-                '算法导论（第三版）',
-                '统计学习方法',
-                'Clean Code',
-                '人工智能：一种现代的方法',
-                '数学之美',
-                'The Pragmatic Programmer'
-            ],
-            course: [
-                'Coursera - Machine Learning by Andrew Ng',
-                'edX - Introduction to Computer Science',
-                '慕课网 - Python数据分析',
-                'Udacity - AI Programming with Python',
-                'Khan Academy - Statistics and Probability',
-                '极客时间 - 算法训练营'
-            ],
-            podcast: [
-                'Lex Fridman Podcast - Yann LeCun',
-                'Talk Python to Me - FastAPI',
-                '得到 - 薛兆丰的经济学课',
-                'The AI Podcast by NVIDIA',
-                'Software Engineering Daily - ML',
-                'Syntax - Web Development'
-            ],
-            article: [
-                'Attention Is All You Need 论文解读',
-                'React Hooks 最佳实践',
-                'Python 性能优化指南',
-                'Transformer 模型详解',
-                '机器学习中的正则化',
-                '设计模式在实际项目中的应用'
-            ],
-            exercise: [
-                'LeetCode 两数之和',
-                'HackerRank SQL 挑战',
-                'Codeforces Round 850',
-                'Kaggle Titanic Competition',
-                'LeetCode 动态规划专题',
-                'AtCoder Beginner Contest'
-            ],
-            project: [
-                '个人博客系统开发',
-                '股票价格预测模型',
-                '聊天机器人实现',
-                'React Native 移动应用',
-                '图像分类深度学习项目',
-                'Web爬虫数据收集系统'
-            ]
+    }
+    
+    // 转换后端记录格式为前端格式
+    convertBackendRecord(backendRecord) {
+        const typeIcons = {
+            video: '📹',
+            podcast: '🎙️',
+            book: '📚',
+            course: '🎓',
+            article: '📄',
+            exercise: '✏️',
+            project: '💻',
+            other: '📌'
         };
         
-        this.records = [];
-        let recordId = 1;
+        const recordDate = new Date(backendRecord.occurred_at);
         
-        learningDays.sort((a, b) => b - a).forEach((day, dayIndex) => {
-            const recordsPerDay = Math.floor(Math.random() * 3) + 1; // 1-3 records per day
-            
-            for (let i = 0; i < recordsPerDay; i++) {
-                // Weighted random selection for type
-                const typeRandom = Math.random();
-                let cumulativeWeight = 0;
-                let selectedType = types[0];
-                
-                for (const typeObj of types) {
-                    cumulativeWeight += typeObj.weight;
-                    if (typeRandom <= cumulativeWeight) {
-                        selectedType = typeObj;
-                        break;
-                    }
-                }
-                
-                // Weighted random selection for categories (1-3 categories)
-                const numCategories = Math.floor(Math.random() * 3) + 1;
-                const selectedCategories = [];
-                for (let j = 0; j < numCategories; j++) {
-                    const catRandom = Math.random();
-                    let catCumulativeWeight = 0;
-                    for (const catObj of categories) {
-                        catCumulativeWeight += catObj.weight;
-                        if (catRandom <= catCumulativeWeight && !selectedCategories.includes(catObj.name)) {
-                            selectedCategories.push(catObj.name);
-                            break;
-                        }
-                    }
-                }
-                
-                // Duration based on type
-                let duration;
-                switch (selectedType.type) {
-                    case 'video':
-                        duration = Math.floor(Math.random() * 60) + 15; // 15-75min
-                        break;
-                    case 'book':
-                        duration = Math.floor(Math.random() * 90) + 30; // 30-120min
-                        break;
-                    case 'course':
-                        duration = Math.floor(Math.random() * 120) + 45; // 45-165min
-                        break;
-                    case 'podcast':
-                        duration = Math.floor(Math.random() * 90) + 20; // 20-110min
-                        break;
-                    case 'project':
-                        duration = Math.floor(Math.random() * 180) + 60; // 60-240min
-                        break;
-                    default:
-                        duration = Math.floor(Math.random() * 45) + 15; // 15-60min
-                }
-                
-                const recordDate = new Date(currentYear, currentMonth, day);
-                recordDate.setHours(
-                    Math.floor(Math.random() * 14) + 8, // 8AM - 10PM
-                    Math.floor(Math.random() * 60)
-                );
-                
-                const record = {
-                    id: recordId++,
-                    type: selectedType.type,
-                    icon: selectedType.icon,
-                    title: titles[selectedType.type][Math.floor(Math.random() * titles[selectedType.type].length)],
-                    categories: selectedCategories.length > 0 ? selectedCategories : ['其他'],
-                    duration,
-                    difficulty: Math.floor(Math.random() * 5) + 1,
-                    focus: Math.floor(Math.random() * 5) + 1,
-                    date: recordDate,
-                    time: recordDate.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
-                };
-                
-                this.records.push(record);
-            }
-        });
-        
-        // Sort by date (newest first)
-        this.records.sort((a, b) => b.date - a.date);
+        return {
+            id: backendRecord.record_id,
+            type: backendRecord.form_type,
+            icon: typeIcons[backendRecord.form_type] || '📌',
+            title: backendRecord.title,
+            categories: backendRecord.tags ? backendRecord.tags.split(',') : [],
+            duration: backendRecord.duration_min,
+            difficulty: backendRecord.difficulty,
+            focus: backendRecord.focus,
+            date: recordDate,
+            time: recordDate.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+        };
     }
 
     setupEventListeners() {
@@ -390,60 +247,79 @@ class LearningBuddyApp {
         });
     }
 
-    saveRecord() {
-        // Collect form data
-        this.recordData.title = document.getElementById('recordTitle').value;
-        this.recordData.duration = parseInt(document.getElementById('recordDuration').value) || 30;
-        this.recordData.date = new Date();
-        this.recordData.id = this.records.length + 1;
-        
-        // Get icon for type
-        const typeIcons = {
-            video: '📹',
-            podcast: '🎙️',
-            book: '📚',
-            course: '🎓',
-            article: '📄',
-            exercise: '✏️',
-            project: '💻',
-            workout: '🏃',
-            other: '📌'
-        };
-        this.recordData.icon = typeIcons[this.recordData.type] || '📌';
-        
-        // Add to records
-        this.records.unshift(this.recordData);
-        
-        // Update UI
-        this.updateDashboard();
-        this.renderRecentRecords();
-        
-        // Close modal and reset
-        this.closeQuickRecord();
-        this.showSuccessMessage();
+    async saveRecord() {
+        try {
+            // Collect form data
+            const title = document.getElementById('recordTitle').value;
+            const duration = parseInt(document.getElementById('recordDuration').value) || 30;
+            
+            if (!title || !this.recordData.type) {
+                this.showError('请填写完整的记录信息');
+                return;
+            }
+            
+            const recordPayload = {
+                title: title,
+                form_type: this.recordData.type,
+                duration_min: duration,
+                difficulty: this.recordData.difficulty || 3,
+                focus: this.recordData.focus || 3,
+                tags: this.recordData.tags ? this.recordData.tags.join(',') : '',
+                notes: this.recordData.notes || ''
+            };
+            
+            console.log('💾 保存记录:', recordPayload);
+            
+            // 发送到后端
+            const savedRecord = await window.apiService.createRecord(recordPayload);
+            
+            // 转换并添加到本地记录
+            const convertedRecord = this.convertBackendRecord(savedRecord);
+            this.records.unshift(convertedRecord);
+            
+            // Update UI
+            this.updateDashboard();
+            this.renderRecentRecords();
+            
+            // Close modal and reset
+            this.closeQuickRecord();
+            this.showSuccessMessage('学习记录保存成功！');
+            
+        } catch (error) {
+            console.error('❌ 保存记录失败:', error);
+            this.showError('保存失败: ' + window.apiService.formatError(error));
+        }
     }
 
-    saveQuickNote() {
+    async saveQuickNote() {
         const quickText = document.querySelector('.quick-input').value;
         if (!quickText) return;
         
-        // Auto-detect and create record
-        const record = {
-            id: this.records.length + 1,
-            type: 'other',
-            icon: '📝',
-            title: quickText.substring(0, 50),
-            categories: ['随手记'],
-            duration: 5,
-            date: new Date(),
-            time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
-        };
-        
-        this.records.unshift(record);
-        this.updateDashboard();
-        this.renderRecentRecords();
-        this.closeQuickRecord();
-        this.showSuccessMessage('智能识别完成，记录已保存！');
+        try {
+            // 创建快速记录
+            const recordPayload = {
+                title: quickText.substring(0, 50),
+                form_type: 'other',
+                duration_min: 5,
+                difficulty: 3,
+                focus: 3,
+                tags: '随手记',
+                notes: quickText
+            };
+            
+            const savedRecord = await window.apiService.createRecord(recordPayload);
+            const convertedRecord = this.convertBackendRecord(savedRecord);
+            this.records.unshift(convertedRecord);
+            
+            this.updateDashboard();
+            this.renderRecentRecords();
+            this.closeQuickRecord();
+            this.showSuccessMessage('快速记录保存成功！');
+            
+        } catch (error) {
+            console.error('❌ 保存快速记录失败:', error);
+            this.showError('保存失败: ' + window.apiService.formatError(error));
+        }
     }
 
     resetForm() {
@@ -454,24 +330,73 @@ class LearningBuddyApp {
     }
 
     showSuccessMessage(message = '记录保存成功！') {
-        // Simple alert for prototype - would be replaced with toast notification
+        this.showToast(message, 'success');
+    }
+    
+    showError(message) {
+        this.showToast(message, 'error');
+    }
+    
+    showToast(message, type = 'success') {
         const toast = document.createElement('div');
         toast.className = 'toast-message';
         toast.textContent = message;
+        
+        const bgColor = type === 'error' ? '#e74c3c' : 'var(--secondary-color)';
+        
         toast.style.cssText = `
             position: fixed;
             top: 80px;
             right: 24px;
-            background: var(--secondary-color);
+            background: ${bgColor};
             color: white;
             padding: 12px 24px;
             border-radius: 8px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             z-index: 2000;
             animation: slideIn 0.3s ease;
+            max-width: 400px;
+            word-wrap: break-word;
         `;
         document.body.appendChild(toast);
-        setTimeout(() => toast.remove(), 3000);
+        setTimeout(() => toast.remove(), type === 'error' ? 5000 : 3000);
+    }
+    
+    showLoading(show) {
+        let loadingElement = document.getElementById('loadingIndicator');
+        
+        if (show) {
+            if (!loadingElement) {
+                loadingElement = document.createElement('div');
+                loadingElement.id = 'loadingIndicator';
+                loadingElement.innerHTML = `
+                    <div style="
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        background: rgba(255,255,255,0.8);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        z-index: 3000;
+                        font-size: 16px;
+                        color: var(--text-primary);
+                    ">
+                        <div style="text-align: center;">
+                            <div style="font-size: 24px; margin-bottom: 12px;">🔄</div>
+                            <div>正在加载数据...</div>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(loadingElement);
+            }
+        } else {
+            if (loadingElement) {
+                loadingElement.remove();
+            }
+        }
     }
 
     updateDashboard() {
@@ -532,6 +457,20 @@ class LearningBuddyApp {
         const container = document.getElementById('recentRecordsList');
         const recentRecords = this.records.slice(0, 5);
         
+        if (recentRecords.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">📚</div>
+                    <div class="empty-title">还没有学习记录</div>
+                    <div class="empty-subtitle">开始你的第一次学习吧！</div>
+                    <button class="btn-primary" onclick="app.showQuickRecord()" style="margin-top: 16px;">
+                        ✨ 创建记录
+                    </button>
+                </div>
+            `;
+            return;
+        }
+        
         container.innerHTML = recentRecords.map(record => `
             <div class="record-item">
                 <div class="record-type">${record.icon}</div>
@@ -549,6 +488,21 @@ class LearningBuddyApp {
 
     renderAllRecords() {
         const container = document.getElementById('recordsList');
+        
+        if (this.records.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state" style="padding: 60px 20px; text-align: center;">
+                    <div class="empty-icon" style="font-size: 48px; margin-bottom: 16px;">📊</div>
+                    <div class="empty-title" style="font-size: 18px; font-weight: 500; margin-bottom: 8px;">暂无学习记录</div>
+                    <div class="empty-subtitle" style="color: var(--text-secondary); margin-bottom: 24px;">开始记录你的学习历程吧！</div>
+                    <button class="btn-primary" onclick="app.showQuickRecord()">
+                        ✨ 创建第一条记录
+                    </button>
+                </div>
+            `;
+            return;
+        }
+        
         container.innerHTML = this.records.map(record => `
             <div class="record-item">
                 <div class="record-type">${record.icon}</div>
@@ -657,8 +611,14 @@ class LearningBuddyApp {
         const topType = Object.entries(typeStats).sort((a, b) => b[1].duration - a[1].duration)[0];
         const totalHours = Math.round(this.records.reduce((sum, r) => sum + r.duration, 0) / 60 * 10) / 10;
         
-        // Month over month growth (mock)
-        const growthRate = Math.floor(Math.random() * 30 + 10); // 10-40% growth
+        // Calculate actual month over month growth based on historical data
+        const currentMonth = new Date().getMonth();
+        const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+        const currentMonthRecords = this.records.filter(r => new Date(r.occurred_at).getMonth() === currentMonth);
+        const lastMonthRecords = this.records.filter(r => new Date(r.occurred_at).getMonth() === lastMonth);
+        const currentMonthHours = currentMonthRecords.reduce((sum, r) => sum + r.duration, 0) / 60;
+        const lastMonthHours = lastMonthRecords.reduce((sum, r) => sum + r.duration, 0) / 60;
+        const growthRate = lastMonthHours > 0 ? Math.round((currentMonthHours - lastMonthHours) / lastMonthHours * 100) : 0;
         
         document.getElementById('trendInsight').textContent = 
             `本月学习时长累计${totalHours}小时，相比上月增长${growthRate}%，保持良好上升趋势`;

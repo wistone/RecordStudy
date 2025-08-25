@@ -4,122 +4,257 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**学习搭子 (Learning Buddy)** is a learning tracking and analytics application that helps users record their daily learning activities, track progress, and receive insights. The project is a full-stack MVP consisting of:
+**学习搭子 (Learning Buddy)** is a learning tracking and analytics application that helps users record their daily learning activities, track progress, and receive insights. The project is a full-stack web application with production-ready authentication and database integration.
 
-- **Frontend**: Vanilla HTML/CSS/JavaScript single-page application with learning record forms, analytics dashboards, and calendar views
-- **Backend**: PostgreSQL database with comprehensive schema for learning records, resources, and user analytics
-- **Target Users**: Chinese-speaking learners who want to digitize their learning journey
+### Architecture
+- **Frontend**: Vanilla HTML/CSS/JavaScript SPA with Supabase authentication
+- **Backend**: FastAPI Python API server with comprehensive REST endpoints
+- **Database**: Supabase PostgreSQL with Row Level Security (RLS)
+- **Authentication**: Supabase Auth with JWT token-based API authentication
+- **Deployment**: Frontend (port 3001) + Backend (port 8000) separated architecture
 
-## Development Environment
+## Technology Stack
 
-### Technology Stack
-- **Frontend**: Vanilla JavaScript (ES6+), HTML5, CSS3
-- **Database**: PostgreSQL with extensions (pg_trgm, citext)
-- **Architecture**: Client-side SPA with future server integration planned
+### Frontend
+- **Core**: Vanilla JavaScript (ES6+), HTML5, CSS3
+- **Authentication**: Supabase JavaScript SDK
+- **API Communication**: Fetch API with JWT tokens
+- **Architecture**: Single-page application with client-side routing
 
-### Database Setup
-The database schema is defined in `sql/001-init.sql`. Key requirements:
-- PostgreSQL with `pg_trgm` and `citext` extensions enabled
-- Run the initialization script to create all tables, indexes, and RLS policies
-- The schema supports multi-tenant architecture with Row Level Security
+### Backend
+- **Framework**: FastAPI with Uvicorn ASGI server
+- **Database**: Supabase Python SDK (not direct PostgreSQL)
+- **Authentication**: JWT token validation via Supabase Auth
+- **API**: RESTful endpoints with OpenAPI documentation
 
-### Running the Application
-Since this is a frontend prototype:
-1. Serve the `frontend/` directory using any static file server
-2. For development: `python -m http.server 8000` from the `frontend/` directory
-3. Access at `http://localhost:8000`
+### Database & Services
+- **Database**: Supabase PostgreSQL with pg_trgm and citext extensions
+- **Authentication**: Supabase Auth service
+- **Schema**: Comprehensive learning records with RLS policies
 
-## Code Architecture
+## Environment Setup
+
+### Dependencies
+```bash
+# Setup Python virtual environment
+./scripts/setup-env.sh
+
+# Start backend server
+venv/bin/python start-backend.py
+
+# Start frontend server
+cd frontend && python -m http.server 3001
+```
+
+### Environment Variables (.env)
+```env
+# Supabase Configuration (Required)
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_KEY=your-service-role-key
+
+# JWT Configuration
+SECRET_KEY=your-secret-key
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+# CORS Configuration
+CORS_ORIGINS=http://localhost:3000,http://localhost:3001,http://localhost:8000
+```
+
+**Note**: `DATABASE_URL` is no longer used - we use Supabase client SDK instead of direct PostgreSQL connections.
+
+## Database Schema & Migration
+
+### Schema Files
+- `sql/001-init.sql` - Base tables and types
+- `sql/002-fix-profiles-rls.sql` - RLS policies
+- `sql/003-demo-data.sql` - Demo user data
+
+### Key Tables
+- `auth.users` - Supabase managed user authentication
+- `public.profiles` - Extended user profiles
+- `public.records` - Learning records with comprehensive metadata
+- `public.resources` - Shared learning resources
+- `public.user_resources` - User-specific resource relationships
+
+### Demo User
+- **Email**: demo@example.com
+- **Password**: abc123
+- **User ID**: 6d45fa47-7935-4673-ac25-bc39ca3f3481
+- **Records**: 23 sample learning entries
+
+## Application Architecture
 
 ### Frontend Structure (`frontend/`)
-- `index.html` - Main SPA with all pages and modal components
-- `js/app.js` - Core application logic with LearningBuddyApp class
-- `styles/main.css` - Complete styling (not examined in detail)
+```
+frontend/
+├── index.html          # Main SPA entry point
+├── login.html          # Authentication page
+├── js/
+│   ├── env.js         # Environment configuration
+│   ├── auth.js        # Supabase authentication service
+│   ├── api-service.js # API communication layer
+│   └── app.js         # Main application logic
+└── styles/
+    └── main.css       # Complete styling
+```
 
-### Key Frontend Classes and Methods
-**LearningBuddyApp Class** (`frontend/js/app.js`):
-- `loadMockData()` - Generates realistic learning data for prototype (30% month coverage)
-- `navigateTo(page)` - SPA routing between home/records/analytics pages
-- `showQuickRecord()` - Modal-based record creation with two modes (form/quick note)
-- `updateDashboard()` - Real-time statistics calculation and display
-- `renderAnalytics()` - Complex analytics generation with insights
-- `renderChart()` - Time-based learning duration visualization with period switching
+### Backend Structure (`backend/`)
+```
+backend/
+├── app/
+│   ├── main.py        # FastAPI application entry
+│   ├── api/
+│   │   ├── __init__.py
+│   │   ├── records.py # Learning records API
+│   │   ├── resources.py
+│   │   └── stats.py
+│   ├── core/
+│   │   ├── config.py  # Settings and configuration
+│   │   ├── auth.py    # JWT authentication middleware
+│   │   └── database.py # Database connection (legacy)
+│   ├── models/        # Pydantic models (legacy)
+│   └── schemas/       # API schemas
+└── requirements.txt   # Python dependencies
+```
 
-### Database Schema (`sql/`)
+## Key Components
 
-**Core Tables**:
-- `records` - Central learning record table with rich metadata (duration, mood, difficulty, focus, energy ratings)
-- `resources` - Shared learning resources with deduplication via URL/ISBN/platform_id
-- `user_resources` - User-specific resource relationships (status, ratings, progress)
+### Authentication Flow
+1. **Frontend**: User login via Supabase Auth
+2. **Token**: JWT access token stored in session
+3. **API Calls**: Token sent in Authorization header
+4. **Backend**: Token validated via Supabase Auth API
+5. **User ID**: Extracted for data filtering
 
-**Support Tables**:
-- `profiles` - Extended user profiles
-- `tags` + `resource_tags` - Flexible tagging system supporting both system and user tags
-- `user_summaries` - Pre-computed analytics for performance
-
-**Key Features**:
-- Comprehensive enum types for standardized data (resource_type, privacy_level, etc.)
-- Advanced indexing for Chinese text search using pg_trgm
-- Row Level Security (RLS) policies for multi-tenant data isolation
-- Automatic timestamp management with triggers
-
-### PRD Requirements (`prd/`)
-Based on `prd-mvp.md` and `data-metric.md`:
-
-**Core Features**:
-- **Quick Recording**: 4-step form (type → category → title → duration) + freeform "quick notes"
-- **Feedback System**: Mood tracking, difficulty/focus/energy ratings (1-5 scale)
-- **Analytics**: Multi-dimensional statistics (time, category, resource, teacher/platform)
-- **AI Insights**: Daily/weekly summaries with "next action" recommendations
-
-**Success Metrics**:
-- Daily Active Records per Engaged user (DARE) ≥ 2
-- Effective learning time median ≥ 35min/day
-- Record creation time ≤ 10s (form) or ≤ 5s (quick note)
-- Auto-structure hit rate ≥ 70%
-
-## Key Development Patterns
+### API Endpoints (`/api/v1/`)
+- `GET /records` - Get user's learning records
+- `POST /records` - Create new record
+- `PUT /records/{id}` - Update record
+- `DELETE /records/{id}` - Delete record
+- `GET /records/test` - Connection test
+- `GET /records/debug/current-user` - Debug user info
 
 ### Data Flow
-1. User creates records via modal forms or quick notes
-2. Data stored in `this.records` array (prototype) / PostgreSQL (production)
-3. Dashboard and analytics auto-update via reactive methods
-4. Complex analytics pre-computed for performance
+```
+Browser → Frontend (3001) → API Call → Backend (8000) → Supabase Client → PostgreSQL
+```
 
-### State Management
-- Single LearningBuddyApp instance manages all application state
-- Page navigation via `navigateTo()` with active class toggling
-- Modal state managed through `showQuickRecord()` / `closeQuickRecord()`
-- Form state tracked in `this.recordData` object
+## Development Patterns
 
-### Chinese Localization
-- All UI text in Simplified Chinese
-- Date/time formatting using Chinese locale (`toLocaleDateString('zh-CN')`)
-- Database supports Chinese text search via pg_trgm extension
-- Category suggestions include Chinese learning topics (英语, AI, 数学, etc.)
+### Database Access Pattern
+**❌ Old Pattern (Removed)**:
+```python
+# Direct PostgreSQL with SQLAlchemy
+from sqlalchemy.orm import Session
+records = db.query(Record).filter_by(user_id=user_id).all()
+```
+
+**✅ Current Pattern**:
+```python
+# Supabase Client SDK
+from supabase import create_client
+client = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
+response = client.table('records').select('*').eq('user_id', user_id).execute()
+```
+
+### Frontend API Pattern
+```javascript
+// Authentication-aware API calls
+const response = await window.apiService.getRecords({ limit: 100, days: 30 });
+
+// Automatic token handling
+const token = await this.getAuthToken();
+fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+```
+
+### Error Handling
+- **Frontend**: User-friendly Chinese error messages
+- **Backend**: HTTP status codes with detailed error responses
+- **Authentication**: Automatic redirect to login on 401 errors
+
+## Testing & Debugging
+
+### Health Checks
+- Backend: `http://localhost:8000/health`
+- Supabase: `http://localhost:8000/api/v1/records/test`
+- User Debug: `http://localhost:8000/api/v1/records/debug/current-user`
+
+### Demo Data Verification
+```bash
+# Check demo user exists and has records
+venv/bin/python -c "
+from supabase import create_client
+client = create_client('SUPABASE_URL', 'SUPABASE_SERVICE_KEY')
+records = client.table('records').select('*').eq('user_id', '6d45fa47-7935-4673-ac25-bc39ca3f3481').execute()
+print(f'Demo user has {len(records.data)} records')
+"
+```
 
 ## Development Guidelines
 
-### Database Changes
-- Always update both `sql/001-init.sql` and `sql/database-schema.md` documentation
-- Test RLS policies with different user contexts
-- Consider performance impact of new indexes on large datasets
-- Use appropriate enum types for standardized values
+### Authentication Requirements
+- All API endpoints require valid JWT token (except test endpoints)
+- Frontend automatically handles token refresh
+- Use Supabase Auth for user management, not custom JWT
+
+### Database Guidelines
+- **Always use Supabase client**, never direct PostgreSQL
+- User data automatically filtered by JWT user ID
+- RLS policies provide additional security layer
 
 ### Frontend Development
-- Maintain vanilla JavaScript approach (no frameworks)
-- Follow existing patterns for DOM manipulation and event handling
-- Update mock data generation in `loadMockData()` when adding new record types
-- Ensure responsive design works across different screen sizes
+- Maintain vanilla JavaScript approach (no build tools)
+- Cache-bust JavaScript files with version parameters when needed
+- Handle authentication state changes reactively
 
-### Analytics Features
-- Pre-compute expensive calculations where possible
-- Support multiple time periods (daily/weekly/monthly/yearly)
-- Generate actionable insights, not just raw statistics
-- Consider data visualization best practices for Chinese users
+### Backend Development
+- Use Supabase client for all database operations
+- Validate user permissions via JWT middleware
+- Return consistent JSON responses with proper HTTP status codes
 
-### Testing Approach
-- Use realistic mock data that reflects actual usage patterns
-- Test edge cases like empty states and data boundaries
-- Verify Chinese text handling and search functionality
-- Validate form input handling and error states
+### Deployment Considerations
+- Frontend can be served from any static file server
+- Backend requires Python environment with Supabase dependencies
+- Both services need access to same Supabase project credentials
+
+## Troubleshooting
+
+### Common Issues
+1. **"queryParams already declared"** - JavaScript syntax error from duplicate variable declarations
+2. **"window.apiService undefined"** - Frontend script loading order or syntax errors
+3. **"No route to host"** - Network connectivity issues with direct PostgreSQL (use Supabase client)
+4. **User ID mismatch** - Demo user ID in database doesn't match authenticated user ID
+
+### Debug Commands
+```javascript
+// Check current user in browser console
+(async () => {
+  const response = await window.apiService.request('/records/debug/current-user');
+  console.log('Current user info:', response);
+})();
+```
+
+### Cache Issues
+When JavaScript changes don't take effect:
+1. Update version numbers in HTML script tags
+2. Hard refresh browser (Cmd+Shift+R / Ctrl+Shift+R)
+3. Clear browser cache and reload
+
+## Success Metrics & Features
+
+### Core Functionality
+- ✅ User registration and authentication
+- ✅ Learning record CRUD operations
+- ✅ Real-time dashboard updates
+- ✅ Multi-dimensional analytics
+- ✅ Chinese localization
+
+### Performance Targets
+- Record creation time ≤ 10 seconds
+- Dashboard load time ≤ 3 seconds
+- API response time ≤ 500ms
+- Daily Active Records per user ≥ 2
+
+The application is now production-ready with secure authentication, reliable data persistence, and scalable architecture suitable for real users.

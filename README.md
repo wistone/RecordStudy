@@ -4,16 +4,22 @@
 
 ## 🚀 快速开始
 
-### 1. 配置环境变量
+### 1. Python环境设置
+
+```bash
+# 自动设置Python环境和依赖
+./scripts/setup-env.sh
+```
+
+### 2. 配置环境变量
 确保 `.env` 文件包含以下Supabase配置：
 ```env
 SUPABASE_URL=https://your-project-id.supabase.co
 SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_KEY=your-service-role-key
-DATABASE_URL=postgresql://postgres:password@db.your-project-id.supabase.co:5432/postgres
 ```
 
-### 2. 初始化数据库
+### 3. 初始化数据库
 在Supabase控制台运行以下SQL脚本：
 ```bash
 # 1. 运行基础表结构
@@ -21,35 +27,56 @@ sql/001-init.sql
 
 # 2. 设置RLS权限策略
 sql/002-fix-profiles-rls.sql
+
+# 3. 插入演示数据
+sql/003-demo-data.sql
 ```
 
-### 3. 启动前端服务器
+### 4. 启动服务
+
 ```bash
-npm start
-# 或者
-python3 -m http.server 3000 --directory frontend
+# 启动后端API服务器
+venv/bin/python start-backend.py
+
+# 启动前端服务器（另一个终端）
+cd frontend && python -m http.server 3001
 ```
 
-访问 `http://localhost:3000` 开始使用。
+访问：
+- 前端应用：http://localhost:3001
+- 后端API：http://localhost:8000
+- API文档：http://localhost:8000/docs
 
 ## 📁 项目结构
 
 ```
 RecordStudy/
-├── .env                    # Supabase环境变量配置
+├── .env                    # 环境变量配置
+├── backend/                # FastAPI后端
+│   ├── app/
+│   │   ├── api/           # API路由
+│   │   ├── core/          # 核心配置
+│   │   ├── models/        # 数据模型
+│   │   └── schemas/       # Pydantic schemas
+│   └── requirements.txt   # Python依赖
 ├── frontend/               # 前端源码
 │   ├── index.html         # 首页
 │   ├── login.html         # 登录页
 │   ├── js/
-│   │   ├── env.js         # 环境变量加载
+│   │   ├── api-service.js # API服务层
 │   │   ├── auth.js        # Supabase认证服务
 │   │   └── app.js         # 主应用逻辑
 │   └── styles/
 │       └── main.css       # 样式文件
+├── scripts/                # 环境管理脚本
+│   ├── setup-env.sh      # 环境设置脚本
+│   └── cleanup-envs.sh   # 环境清理脚本
 ├── sql/                   # 数据库脚本
 │   ├── 001-init.sql      # 初始化表结构
-│   └── 002-fix-profiles-rls.sql  # RLS策略
-└── package.json          # 项目配置
+│   ├── 002-fix-profiles-rls.sql  # RLS策略
+│   └── 003-demo-data.sql # 演示数据
+├── venv/                  # Python虚拟环境（自动生成）
+└── start-backend.py      # 后端启动脚本
 ```
 
 ## 🔐 安全特性
@@ -90,20 +117,32 @@ RecordStudy/
 - 响应式CSS设计
 
 ### 后端
-- Supabase (BaaS)
-  - PostgreSQL数据库
-  - 内置用户认证
+- FastAPI (Python)
+- Supabase Python SDK
+- JWT认证中间件
+- Pydantic数据验证
+
+### 数据库
+- Supabase PostgreSQL
+  - Row Level Security (RLS)
   - 实时数据订阅
-  - Row Level Security
-  - 自动生成API
+  - 企业级用户认证
+  - RESTful API自动生成
 
 ## ✨ 功能特性
 
+### 已完成 ✅
 - 🔐 用户注册/登录/登出 (Supabase Auth)
-- 📝 学习记录管理 (开发中)
-- 📊 数据统计分析 (开发中)
-- 🎯 学习进度跟踪 (开发中)
-- 📱 响应式设计
+- 🗄️ 数据库连接和API服务
+- 📊 学习记录CRUD操作
+- 🎨 响应式前端界面
+- 🔗 前后端API集成
+
+### 开发中 🚧
+- 📝 完整学习记录管理界面
+- 📊 数据统计分析和图表
+- 🎯 学习进度跟踪
+- 📱 移动端优化
 
 ## 🎯 后续开发计划
 

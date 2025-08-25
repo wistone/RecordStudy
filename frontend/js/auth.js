@@ -3,7 +3,6 @@ class AuthService {
     constructor() {
         this.supabase = null;
         this.user = null;
-        this.mockMode = false;
         
         // 初始化Supabase
         this.initializeSupabase();
@@ -20,15 +19,13 @@ class AuthService {
             // 检查环境变量
             if (!window.ENV || !window.ENV.SUPABASE_URL || !window.ENV.SUPABASE_ANON_KEY) {
                 console.error('❌ 环境变量未配置');
-                this.mockMode = true;
-                return;
+                throw new Error('Supabase environment variables not configured');
             }
             
             // 检查 Supabase 是否已加载
             if (typeof window.supabase === 'undefined') {
                 console.error('❌ Supabase SDK 未加载');
-                this.mockMode = true;
-                return;
+                throw new Error('Supabase SDK not loaded');
             }
 
             // 创建 Supabase 客户端
@@ -61,7 +58,7 @@ class AuthService {
 
         } catch (error) {
             console.error('❌ Supabase 初始化失败:', error);
-            this.mockMode = true;
+            throw error;
         }
     }
 
@@ -69,18 +66,6 @@ class AuthService {
     async initialize() {
         console.log('🔄 初始化认证服务...');
         
-        if (this.mockMode) {
-            // Mock mode: 检查 localStorage 中的用户信息
-            const mockUser = localStorage.getItem('mockUser');
-            if (mockUser) {
-                this.user = JSON.parse(mockUser);
-                console.log('🎭 Mock 模式：加载用户', this.user.email);
-            } else {
-                console.log('🎭 Mock 模式：无用户数据');
-            }
-            this.notifyListeners();
-            return;
-        }
 
         try {
             const { data: { user } } = await this.supabase.auth.getUser();
@@ -103,24 +88,6 @@ class AuthService {
 
     // 注册新用户
     async signUp(email, password, displayName) {
-        if (this.mockMode) {
-            // Mock mode: 模拟注册
-            console.log('🎭 Mock模式注册:', email);
-            const mockUser = {
-                id: 'mock-user-' + Date.now(),
-                email: email,
-                user_metadata: { display_name: displayName }
-            };
-            
-            localStorage.setItem('mockUser', JSON.stringify(mockUser));
-            this.user = mockUser;
-            this.notifyListeners();
-            
-            return {
-                data: { user: mockUser },
-                error: null
-            };
-        }
 
         try {
             console.log('📝 开始注册用户:', email);
@@ -164,24 +131,6 @@ class AuthService {
 
     // 用户登录
     async signIn(email, password) {
-        if (this.mockMode) {
-            // Mock mode: 模拟登录
-            console.log('🎭 Mock模式登录:', email);
-            const mockUser = {
-                id: 'mock-user-123',
-                email: email,
-                user_metadata: { display_name: email.split('@')[0] }
-            };
-            
-            localStorage.setItem('mockUser', JSON.stringify(mockUser));
-            this.user = mockUser;
-            this.notifyListeners();
-            
-            return {
-                data: { user: mockUser },
-                error: null
-            };
-        }
 
         try {
             console.log('🔐 开始用户登录:', email);
@@ -210,14 +159,6 @@ class AuthService {
 
     // 用户登出
     async signOut() {
-        if (this.mockMode) {
-            // Mock mode: 清除本地存储
-            console.log('🎭 Mock模式登出');
-            localStorage.removeItem('mockUser');
-            this.user = null;
-            this.notifyListeners();
-            return { error: null };
-        }
 
         try {
             console.log('👋 用户登出');
@@ -250,10 +191,6 @@ class AuthService {
 
     // 创建用户档案
     async createUserProfile(user, displayName) {
-        if (this.mockMode) {
-            console.log('🎭 Mock 模式：跳过创建用户档案');
-            return { error: null };
-        }
 
         try {
             console.log('📝 准备创建用户档案:', {
@@ -287,11 +224,6 @@ class AuthService {
 
     // 重置密码
     async resetPassword(email) {
-        if (this.mockMode) {
-            // Mock mode: 模拟发送重置邮件
-            console.log('🎭 Mock模式发送密码重置邮件:', email);
-            return { error: null };
-        }
 
         try {
             const { error } = await this.supabase.auth.resetPasswordForEmail(email);

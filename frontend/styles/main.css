@@ -1019,7 +1019,7 @@ body {
 }
 
 /* Enhanced Chart Styles */
-.mock-chart {
+.chart-placeholder {
     height: 100%;
     display: flex;
     flex-direction: column;
