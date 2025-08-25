@@ -80,9 +80,37 @@ async def get_records(
         # 执行查询
         response = query.order('occurred_at', desc=True).range(skip, skip + limit - 1).execute()
         
+        # 获取记录的标签信息
+        records_with_tags = []
+        for record in response.data:
+            if record.get('resource_id'):
+                try:
+                    # 查询资源标签关联
+                    resource_tags_response = client.table('resource_tags').select('tag_id').eq('user_id', current_user_id).eq('resource_id', record['resource_id']).execute()
+                    
+                    tag_names = []
+                    if resource_tags_response.data:
+                        # 获取所有标签ID
+                        tag_ids = [rt['tag_id'] for rt in resource_tags_response.data]
+                        
+                        if tag_ids:
+                            # 查询标签名称
+                            tags_response = client.table('tags').select('tag_name').in_('tag_id', tag_ids).execute()
+                            if tags_response.data:
+                                tag_names = [tag['tag_name'] for tag in tags_response.data]
+                    
+                    record['tags'] = ','.join(tag_names) if tag_names else ''
+                except Exception as tag_error:
+                    print(f"标签查询失败: {tag_error}")
+                    record['tags'] = ''
+            else:
+                record['tags'] = ''
+            
+            records_with_tags.append(record)
+        
         return {
-            "records": response.data,
-            "total": len(response.data)
+            "records": records_with_tags,
+            "total": len(records_with_tags)
         }
         
     except Exception as e:
@@ -111,7 +139,7 @@ async def create_record(
             "form_type": record_data.form_type,
             "title": record_data.title,
             "body_md": record_data.body_md,
-            "occurred_at": (record_data.occurred_at or datetime.now()).isoformat(),
+            "occurred_at": (record_data.occurred_at or datetime.utcnow()).isoformat(),
             "duration_min": record_data.duration_min,
             "effective_duration_min": record_data.effective_duration_min,
             "mood": record_data.mood,

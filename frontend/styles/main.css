@@ -481,6 +481,7 @@ body {
     grid-template-columns: auto 1fr auto;
     gap: 16px;
     align-items: center;
+    min-height: 80px;
 }
 
 .record-item:hover {
@@ -519,6 +520,15 @@ body {
 .record-duration {
     font-weight: 600;
     color: var(--primary-color);
+}
+
+.record-tags {
+    background: rgba(37, 99, 235, 0.1);
+    color: var(--primary-color);
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
 }
 
 /* Filters */
@@ -1366,6 +1376,127 @@ body {
     display: block;
     margin-bottom: 8px;
     color: var(--secondary-color);
+}
+
+/* Empty States */
+.empty-state {
+    text-align: center;
+    padding: 48px 24px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    margin: 24px 0;
+}
+
+.empty-state-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.6;
+}
+
+.empty-state-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.empty-state-message {
+    font-size: 15px;
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+    line-height: 1.6;
+}
+
+.empty-state-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: var(--primary-color);
+    color: white;
+    text-decoration: none;
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: none;
+    cursor: pointer;
+}
+
+.empty-state-action:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.empty-state-action .btn-icon {
+    font-size: 16px;
+}
+
+/* Records List Empty State */
+.records-list.empty {
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin: 0;
+}
+
+.records-list.full {
+    min-height: 200px;
+    padding-bottom: 24px;
+}
+
+/* Learning Summary Conditional Display */
+.learning-summary.hidden {
+    display: none;
+}
+
+.ai-summary.hidden {
+    display: none;
+}
+
+.milestone-section.hidden {
+    display: none;
+}
+
+/* Enhanced Empty State for Records Page */
+.records-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+    text-align: center;
+    padding: 48px 24px;
+}
+
+.records-empty-graphic {
+    width: 120px;
+    height: 120px;
+    margin-bottom: 24px;
+    border-radius: var(--radius-lg);
+    background: linear-gradient(135deg, var(--bg-tertiary), var(--bg-secondary));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 48px;
+    opacity: 0.8;
+}
+
+.records-empty-title {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+}
+
+.records-empty-subtitle {
+    font-size: 16px;
+    color: var(--text-secondary);
+    margin-bottom: 32px;
+    max-width: 400px;
+    line-height: 1.6;
 }
 
 /* Responsive Design */

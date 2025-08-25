@@ -15,6 +15,7 @@ class LearningBuddyApp {
         this.setupEventListeners();
         this.updateDashboard();
         this.renderRecentRecords();
+        this.updateConditionalSections();
     }
 
     // Load data from backend API
@@ -277,9 +278,15 @@ class LearningBuddyApp {
             const convertedRecord = this.convertBackendRecord(savedRecord);
             this.records.unshift(convertedRecord);
             
-            // Update UI
+            // Update UI based on current page
             this.updateDashboard();
             this.renderRecentRecords();
+            this.updateConditionalSections();
+            
+            // Refresh current page if it's records page
+            if (this.currentPage === 'records') {
+                this.renderAllRecords();
+            }
             
             // Close modal and reset
             this.closeQuickRecord();
@@ -313,6 +320,13 @@ class LearningBuddyApp {
             
             this.updateDashboard();
             this.renderRecentRecords();
+            this.updateConditionalSections();
+            
+            // Refresh current page if it's records page
+            if (this.currentPage === 'records') {
+                this.renderAllRecords();
+            }
+            
             this.closeQuickRecord();
             this.showSuccessMessage('快速记录保存成功！');
             
@@ -453,6 +467,37 @@ class LearningBuddyApp {
         return streak;
     }
 
+    // Update conditional display sections based on data availability
+    updateConditionalSections() {
+        const hasRecords = this.records && this.records.length > 0;
+        
+        // Hide AI summary section if no records
+        const aiSummarySection = document.querySelector('.ai-summary');
+        if (aiSummarySection) {
+            if (hasRecords) {
+                aiSummarySection.classList.remove('hidden');
+            } else {
+                aiSummarySection.classList.add('hidden');
+            }
+        }
+        
+        // Hide milestone achievements section if no records
+        // Look for the stats-grid-three section containing milestones
+        const statsGridThree = document.querySelector('.stats-grid-three');
+        if (statsGridThree) {
+            const milestoneCard = statsGridThree.children[2]; // Third card is milestones
+            if (milestoneCard) {
+                if (hasRecords) {
+                    milestoneCard.style.display = 'block';
+                } else {
+                    milestoneCard.style.display = 'none';
+                }
+            }
+        }
+        
+        console.log(`📊 Conditional sections updated. Has records: ${hasRecords}`);
+    }
+
     renderRecentRecords() {
         const container = document.getElementById('recentRecordsList');
         const recentRecords = this.records.slice(0, 5);
@@ -460,11 +505,12 @@ class LearningBuddyApp {
         if (recentRecords.length === 0) {
             container.innerHTML = `
                 <div class="empty-state">
-                    <div class="empty-icon">📚</div>
-                    <div class="empty-title">还没有学习记录</div>
-                    <div class="empty-subtitle">开始你的第一次学习吧！</div>
-                    <button class="btn-primary" onclick="app.showQuickRecord()" style="margin-top: 16px;">
-                        ✨ 创建记录
+                    <div class="empty-state-icon">📚</div>
+                    <div class="empty-state-title">还没有学习记录</div>
+                    <div class="empty-state-message">开始你的第一次学习吧！</div>
+                    <button class="empty-state-action" onclick="app.showQuickRecord()">
+                        <span class="btn-icon">✨</span>
+                        创建记录
                     </button>
                 </div>
             `;
@@ -477,7 +523,9 @@ class LearningBuddyApp {
                 <div class="record-content">
                     <div class="record-title">${record.title}</div>
                     <div class="record-meta">
-                        <span>${record.categories ? record.categories.join(', ') : ''}</span>
+                        ${record.categories && record.categories.length > 0 && record.categories[0] !== '' 
+                            ? `<span class="record-tags">${record.categories.join(', ')}</span>` 
+                            : ''}
                         <span>${record.time || record.date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</span>
                         <span class="record-duration">${record.duration}分钟</span>
                     </div>
@@ -490,17 +538,21 @@ class LearningBuddyApp {
         const container = document.getElementById('recordsList');
         
         if (this.records.length === 0) {
+            container.className = 'records-list empty';
             container.innerHTML = `
-                <div class="empty-state" style="padding: 60px 20px; text-align: center;">
-                    <div class="empty-icon" style="font-size: 48px; margin-bottom: 16px;">📊</div>
-                    <div class="empty-title" style="font-size: 18px; font-weight: 500; margin-bottom: 8px;">暂无学习记录</div>
-                    <div class="empty-subtitle" style="color: var(--text-secondary); margin-bottom: 24px;">开始记录你的学习历程吧！</div>
-                    <button class="btn-primary" onclick="app.showQuickRecord()">
-                        ✨ 创建第一条记录
+                <div class="records-empty-state">
+                    <div class="records-empty-graphic">📊</div>
+                    <div class="records-empty-title">暂无学习记录</div>
+                    <div class="records-empty-subtitle">开始记录你的学习历程吧！</div>
+                    <button class="empty-state-action" onclick="app.showQuickRecord()">
+                        <span class="btn-icon">✨</span>
+                        创建第一条记录
                     </button>
                 </div>
             `;
             return;
+        } else {
+            container.className = 'records-list full';
         }
         
         container.innerHTML = this.records.map(record => `
@@ -509,7 +561,9 @@ class LearningBuddyApp {
                 <div class="record-content">
                     <div class="record-title">${record.title}</div>
                     <div class="record-meta">
-                        <span>${record.categories ? record.categories.join(', ') : ''}</span>
+                        ${record.categories && record.categories.length > 0 && record.categories[0] !== '' 
+                            ? `<span class="record-tags">${record.categories.join(', ')}</span>` 
+                            : ''}
                         <span>${record.date.toLocaleDateString('zh-CN')}</span>
                         <span>${record.time || record.date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</span>
                         <span class="record-duration">${record.duration}分钟</span>
@@ -543,7 +597,9 @@ class LearningBuddyApp {
                 <div class="record-content">
                     <div class="record-title">${record.title}</div>
                     <div class="record-meta">
-                        <span>${record.categories ? record.categories.join(', ') : ''}</span>
+                        ${record.categories && record.categories.length > 0 && record.categories[0] !== '' 
+                            ? `<span class="record-tags">${record.categories.join(', ')}</span>` 
+                            : ''}
                         <span>${record.date.toLocaleDateString('zh-CN')}</span>
                         <span class="record-duration">${record.duration}分钟</span>
                     </div>
@@ -614,8 +670,8 @@ class LearningBuddyApp {
         // Calculate actual month over month growth based on historical data
         const currentMonth = new Date().getMonth();
         const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
-        const currentMonthRecords = this.records.filter(r => new Date(r.occurred_at).getMonth() === currentMonth);
-        const lastMonthRecords = this.records.filter(r => new Date(r.occurred_at).getMonth() === lastMonth);
+        const currentMonthRecords = this.records.filter(r => r.date.getMonth() === currentMonth);
+        const lastMonthRecords = this.records.filter(r => r.date.getMonth() === lastMonth);
         const currentMonthHours = currentMonthRecords.reduce((sum, r) => sum + r.duration, 0) / 60;
         const lastMonthHours = lastMonthRecords.reduce((sum, r) => sum + r.duration, 0) / 60;
         const growthRate = lastMonthHours > 0 ? Math.round((currentMonthHours - lastMonthHours) / lastMonthHours * 100) : 0;
