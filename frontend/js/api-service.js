@@ -1,7 +1,7 @@
 // Python后端API服务层
 class APIService {
     constructor() {
-        this.baseURL = 'http://localhost:8000/api/v1';
+        this.baseURL = window.ENV?.API_BASE_URL || 'http://localhost:8000/api/v1';
         this.cache = new Map();
         this.cacheTimeout = 5 * 60 * 1000; // 5分钟缓存
     }

@@ -5,7 +5,7 @@ from app.core.config import settings
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    description="学习搭子 - 记录学习，见证成长",
+    description="Study Buddy - 记录学习，见证成长",
     version="2.0.0",
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     docs_url="/docs",
@@ -21,17 +21,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# API路由
-app.include_router(api_router, prefix=settings.API_V1_STR)
-
 @app.get("/")
 async def root():
     return {
-        "message": "RecordStudy API v2.0 - Python Backend",
+        "message": "Study Buddy API v2.0",
         "docs": "/docs",
         "status": "running"
     }
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "service": "recordstudy-api"}
+    return {"status": "healthy", "service": "study-buddy-api"}
+
+# API路由
+app.include_router(api_router, prefix=settings.API_V1_STR)

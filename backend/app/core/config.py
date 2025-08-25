@@ -14,14 +14,12 @@ class Settings:
     JWT_SECRET_KEY: str = config('SECRET_KEY', default='your-secret-key')
     JWT_ALGORITHM: str = 'HS256'
     
-    # CORS配置
-    CORS_ORIGINS: List[str] = [
-        "http://localhost:3000",
-        "http://localhost:3001", 
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:3001",
-        "http://localhost:8000",
-    ]
+    # CORS配置 - 合并部署时同域，不需要复杂CORS配置
+    CORS_ORIGINS: List[str] = config(
+        'CORS_ORIGINS', 
+        default="http://localhost:3000,http://localhost:3001,http://127.0.0.1:3000,http://127.0.0.1:3001,http://localhost:8000,https://study-buddy.onrender.com",
+        cast=lambda x: [origin.strip() for origin in x.split(',')]
+    )
     
     # API配置
     API_V1_STR: str = "/api/v1"
