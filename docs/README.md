@@ -18,10 +18,10 @@
 
 ## 📋 文档说明
 
-**两个部署文档的区别：**
+**部署文档使用指南：**
 
 - **RENDER_QUICKSTART.md**: 精简版，适合快速部署
-- **DEPLOYMENT_GUIDE.md**: 完整版，包含详细说明和故障排除
+- **DEPLOYMENT_GUIDE.md**: 完整版，包含详细说明
 
 推荐：
 - 🔰 首次部署用户 → 先看 DEPLOYMENT_GUIDE.md  
@@ -31,15 +31,15 @@
 
 **最终部署架构：**
 ```
-study-buddy.onrender.com         (前端静态站点)
+studybuddy.onrender.com         (前端静态站点)
      ↓ API calls
-study-buddy-api.onrender.com     (后端 API 服务)
+studybuddy-api.onrender.com     (后端 API 服务)
      ↓ Database queries  
-supabase.co                      (PostgreSQL 数据库)
+supabase.co                     (PostgreSQL 数据库)
 ```
 
 ## 🎯 部署目标
 
-- **前端**: https://study-buddy.onrender.com
-- **后端**: https://study-buddy-api.onrender.com  
-- **API 文档**: https://study-buddy-api.onrender.com/docs
+- **前端**: https://studybuddy.onrender.com
+- **后端**: https://studybuddy-api.onrender.com  
+- **API 文档**: https://studybuddy-api.onrender.com/docs

@@ -1,7 +1,7 @@
 services:
   # 后端 API 服务
   - type: web
-    name: study-buddy-api
+    name: studybuddy-api
     env: python
     buildCommand: "pip install -r backend/requirements.txt"
     startCommand: "cd backend && python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT"
@@ -19,13 +19,13 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: CORS_ORIGINS
-        value: "https://study-buddy.onrender.com"
+        value: "https://studybuddy.onrender.com"
       - key: NODE_ENV
         value: "production"
 
   # 前端静态站点
   - type: static
-    name: study-buddy
+    name: studybuddy
     buildCommand: "echo 'No build required'"
     staticPublishPath: "./frontend"
     routes:

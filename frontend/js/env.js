@@ -6,7 +6,7 @@ window.ENV = {
     // API 后端地址 - 分离部署，指向 API 服务
     API_BASE_URL: window.location.hostname === 'localhost' 
         ? 'http://localhost:8000/api/v1'
-        : 'https://study-buddy-api.onrender.com/api/v1'
+        : 'https://studybuddy-api.onrender.com/api/v1'
 };
 
 console.log('✅ Supabase环境变量已加载');

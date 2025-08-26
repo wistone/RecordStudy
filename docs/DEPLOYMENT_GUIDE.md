@@ -1,4 +1,4 @@
-# Study Buddy - Render 部署指南🌐 study-buddy.onrender.com
+# Study Buddy - Render 部署指南🌐 studybuddy.onrender.com
 
 ## 📋 部署前检查清单
 
@@ -17,7 +17,7 @@
 ```bash
 # 1. 确保所有更改都已提交
 git add .
-git commit -m "feat: add fullstack deployment configuration for study-buddy.onrender.com"
+git commit -m "feat: add fullstack deployment configuration for studybuddy.onrender.com"
 
 # 2. 推送到 GitHub（如果还没有远程仓库）
 # 在 GitHub 创建新仓库，然后：
@@ -26,7 +26,7 @@ git branch -M main
 git push -u origin main
 ```
 
-### 第二步：在 Render 创建全栈 Web Service
+### 第二步：创建后端 API 服务
 
 1. **登录 Render**
    - 访问 https://render.com
@@ -35,53 +35,82 @@ git push -u origin main
 2. **创建新的 Web Service**
    - 点击 "New +" → "Web Service"
    - 连接你的 GitHub 仓库
-   - 选择 `RecordStudy` 仓库
+   - 选择你的 GitHub 仓库
 
-3. **配置全栈服务**
+3. **配置后端服务**
    ```
-   Name: study-buddy
+   Name: studybuddy-api
    Environment: Python 3
    Build Command: pip install -r backend/requirements.txt
-   Start Command: cd backend && python start.py
+   Start Command: cd backend && python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
    Instance Type: Free (选择免费计划)
    ```
+   
+   **⚠️ 重要提醒：**
+   - 必须手动输入 Start Command，不要使用 Render 的自动检测
+   - 自动检测会错误使用 `gunicorn your_application.wsgi`
 
-4. **设置环境变量**
+4. **设置后端环境变量**
    在 Environment Variables 部分添加：
    ```
    SUPABASE_URL=https://rrkpxsjfuiptuufatnmx.supabase.co
    SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJya3B4c2pmdWlwdHV1ZmF0bm14Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYwNDUzMjAsImV4cCI6MjA3MTYyMTMyMH0.x5TP-elB9X6j2BkA_ejrazkTBE-QKPRjyK_GeShIzpU
    SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJya3B4c2pmdWlwdHV1ZmF0bm14Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NjA0NTMyMCwiZXhwIjoyMDcxNjIxMzIwfQ.ysbr7C4Pl8E-zTLEpuicIHEBA0B3Gf50Qya9Iw0pbbA
    SECRET_KEY=随机生成的安全密钥（点击 Generate）
+   CORS_ORIGINS=https://studybuddy.onrender.com
    NODE_ENV=production
    PYTHON_VERSION=3.11.0
    ```
 
-5. **部署**
+5. **部署后端服务**
    - 点击 "Create Web Service"
    - 等待构建完成（约 5-10 分钟）
 
-### 第三步：设置自定义域名（可选）
+### 第三步：创建前端静态站点
 
-1. **在 Render 中设置自定义域名**
-   - 在服务设置中找到 "Custom Domains"
-   - 添加 `study-buddy.onrender.com`
-   - 或者使用默认的 Render 域名
+1. **创建 Static Site**
+   - 在 Render Dashboard 点击 "New +" → "Static Site"
+   - 选择同一个 GitHub 仓库
 
-**注意：**合并部署的优势：
-- ✅ 只需要一个域名
-- ✅ 无 CORS 问题（同域请求）
-- ✅ 部署简单（只需要一个服务）
-- ✅ 节省免费资源
+2. **配置前端服务**
+   ```
+   Name: studybuddy
+   Build Command: echo "No build required"
+   Publish Directory: frontend
+   Instance Type: Free
+   ```
+
+3. **设置重写规则**
+   在 Redirects/Rewrites 部分添加：
+   ```
+   /*    /index.html    200
+   ```
+   这确保 SPA 路由正常工作。
+
+4. **部署前端服务**
+   - 点击 "Create Static Site"
+   - 等待部署完成（约 2-5 分钟）
+
+### 第四步：验证服务连接
+
+**分离部署的优势：**
+- ✅ 服务职责清晰，易于调试
+- ✅ 前后端可独立扩展
+- ✅ 静态文件由 CDN 加速
+- ✅ API 路由无冲突问题
 
 ## 🔍 部署后验证
 
-### 检查全栈应用
-1. 访问应用主页：`https://study-buddy.onrender.com`
-2. 检查健康状态：`https://study-buddy.onrender.com/health`
-3. 查看 API 文档：`https://study-buddy.onrender.com/docs`
-4. 测试用户登录：使用 `demo@example.com` / `abc123`
-5. 测试学习记录功能
+### 检查后端 API 服务
+1. 检查健康状态：`https://studybuddy-api.onrender.com/health`
+2. 查看 API 文档：`https://studybuddy-api.onrender.com/docs`
+3. 测试 API 连接：`https://studybuddy-api.onrender.com/api/v1/records/test`
+
+### 检查前端应用
+1. 访问应用主页：`https://studybuddy.onrender.com`
+2. 测试用户登录：使用 `demo@example.com` / `abc123`
+3. 验证前后端通信正常（无 CORS 错误）
+4. 测试学习记录功能
 
 ### 数据库连接测试
 1. 登录前端应用
@@ -140,8 +169,8 @@ curl -H "Origin: https://your-frontend.onrender.com" \
 
 恭喜！你的 Study Buddy 应用现在已经部署到 Render 上了。
 
-- **应用地址**： https://study-buddy.onrender.com
-- **API 文档**： https://study-buddy.onrender.com/docs
-- **健康检查**： https://study-buddy.onrender.com/health
+- **应用地址**： https://studybuddy.onrender.com
+- **API 文档**： https://studybuddy.onrender.com/docs
+- **健康检查**： https://studybuddy.onrender.com/health
 
 记住保存这些 URL，并在需要时更新 DNS 记录或自定义域名。
