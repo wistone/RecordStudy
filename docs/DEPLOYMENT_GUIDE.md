@@ -1,4 +1,4 @@
-# Study Buddy - Render 部署指南🌐 studybuddy.onrender.com
+# Study Buddy - Render 部署指南🌐 your-study-buddy.onrender.com
 
 ## 📋 部署前检查清单
 
@@ -17,7 +17,7 @@
 ```bash
 # 1. 确保所有更改都已提交
 git add .
-git commit -m "feat: add fullstack deployment configuration for studybuddy.onrender.com"
+git commit -m "feat: add fullstack deployment configuration for your-study-buddy.onrender.com"
 
 # 2. 推送到 GitHub（如果还没有远程仓库）
 # 在 GitHub 创建新仓库，然后：
@@ -39,7 +39,7 @@ git push -u origin main
 
 3. **配置后端服务**
    ```
-   Name: studybuddy-api
+   Name: your-study-buddy-api
    Environment: Python 3
    Build Command: pip install -r backend/requirements.txt
    Start Command: cd backend && python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
@@ -57,7 +57,7 @@ git push -u origin main
    SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJya3B4c2pmdWlwdHV1ZmF0bm14Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYwNDUzMjAsImV4cCI6MjA3MTYyMTMyMH0.x5TP-elB9X6j2BkA_ejrazkTBE-QKPRjyK_GeShIzpU
    SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJya3B4c2pmdWlwdHV1ZmF0bm14Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NjA0NTMyMCwiZXhwIjoyMDcxNjIxMzIwfQ.ysbr7C4Pl8E-zTLEpuicIHEBA0B3Gf50Qya9Iw0pbbA
    SECRET_KEY=随机生成的安全密钥（点击 Generate）
-   CORS_ORIGINS=https://studybuddy.onrender.com
+   CORS_ORIGINS=https://your-study-buddy.onrender.com
    NODE_ENV=production
    PYTHON_VERSION=3.11.0
    ```
@@ -74,7 +74,7 @@ git push -u origin main
 
 2. **配置前端服务**
    ```
-   Name: studybuddy
+   Name: your-study-buddy
    Build Command: echo "No build required"
    Publish Directory: frontend
    Instance Type: Free
@@ -102,12 +102,12 @@ git push -u origin main
 ## 🔍 部署后验证
 
 ### 检查后端 API 服务
-1. 检查健康状态：`https://studybuddy-api.onrender.com/health`
-2. 查看 API 文档：`https://studybuddy-api.onrender.com/docs`
-3. 测试 API 连接：`https://studybuddy-api.onrender.com/api/v1/records/test`
+1. 检查健康状态：`https://your-study-buddy-api.onrender.com/health`
+2. 查看 API 文档：`https://your-study-buddy-api.onrender.com/docs`
+3. 测试 API 连接：`https://your-study-buddy-api.onrender.com/api/v1/records/test`
 
 ### 检查前端应用
-1. 访问应用主页：`https://studybuddy.onrender.com`
+1. 访问应用主页：`https://your-study-buddy.onrender.com`
 2. 测试用户登录：使用 `demo@example.com` / `abc123`
 3. 验证前后端通信正常（无 CORS 错误）
 4. 测试学习记录功能
@@ -169,8 +169,8 @@ curl -H "Origin: https://your-frontend.onrender.com" \
 
 恭喜！你的 Study Buddy 应用现在已经部署到 Render 上了。
 
-- **应用地址**： https://studybuddy.onrender.com
-- **API 文档**： https://studybuddy.onrender.com/docs
-- **健康检查**： https://studybuddy.onrender.com/health
+- **应用地址**： https://your-study-buddy.onrender.com
+- **API 文档**： https://your-study-buddy.onrender.com/docs
+- **健康检查**： https://your-study-buddy.onrender.com/health
 
 记住保存这些 URL，并在需要时更新 DNS 记录或自定义域名。

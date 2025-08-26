@@ -31,15 +31,15 @@
 
 **最终部署架构：**
 ```
-studybuddy.onrender.com         (前端静态站点)
+your-study-buddy.onrender.com         (前端静态站点)
      ↓ API calls
-studybuddy-api.onrender.com     (后端 API 服务)
+your-study-buddy-api.onrender.com     (后端 API 服务)
      ↓ Database queries  
 supabase.co                     (PostgreSQL 数据库)
 ```
 
 ## 🎯 部署目标
 
-- **前端**: https://studybuddy.onrender.com
-- **后端**: https://studybuddy-api.onrender.com  
-- **API 文档**: https://studybuddy-api.onrender.com/docs
+- **前端**: https://your-study-buddy.onrender.com
+- **后端**: https://your-study-buddy-api.onrender.com  
+- **API 文档**: https://your-study-buddy-api.onrender.com/docs
