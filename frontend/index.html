@@ -448,7 +448,7 @@
     <!-- Include API Service -->
     <script src="js/api-service.js?v=20250825-6"></script>
     <!-- Include Main Application -->
-    <script src="js/app.js?v=20250825-8"></script>
+    <script src="js/app.js?v=20250827-1"></script>
     
     <script>
         let isRedirecting = false; // 防止重复重定向
@@ -490,6 +490,27 @@
             if (!document.hidden && authService.isAuthenticated()) {
                 console.log('🔄 页面重新可见，刷新用户信息');
                 await updateUserDisplay(authService.getCurrentUser());
+            }
+        });
+
+        // 监听localStorage中的头像更新事件
+        window.addEventListener('storage', (event) => {
+            if (event.key === 'avatarUpdated' && authService.isAuthenticated()) {
+                console.log('📸 检测到头像更新事件');
+                // 延迟一点再刷新，确保存储操作完成
+                setTimeout(async () => {
+                    await updateUserDisplay(authService.getCurrentUser());
+                }, 100);
+            }
+        });
+
+        // 监听来自个人资料页面的消息
+        window.addEventListener('message', (event) => {
+            if (event.data.type === 'AVATAR_UPDATED' && authService.isAuthenticated()) {
+                console.log('📸 收到头像更新消息:', event.data.avatarUrl);
+                setTimeout(async () => {
+                    await updateUserDisplay(authService.getCurrentUser());
+                }, 100);
             }
         });
         

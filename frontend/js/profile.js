@@ -4,10 +4,25 @@ class ProfileManager {
         this.apiService = window.apiService;
         this.authService = window.authService;
         this.currentProfile = null;
+        this.avatarEditor = {
+            file: null,
+            scale: 1,
+            x: 0,
+            y: 0,
+            isDragging: false,
+            dragStart: { x: 0, y: 0 }
+        };
     }
 
     async init() {
         console.log('🔄 初始化个人资料管理器...');
+        
+        // 确保头像编辑器初始状态为隐藏
+        const modal = document.getElementById('avatarEditorModal');
+        if (modal) {
+            modal.classList.add('hidden');
+        }
+        
         await this.loadProfile();
     }
 
@@ -50,8 +65,8 @@ class ProfileManager {
     }
 
 
-    // 上传头像
-    async uploadAvatar(file) {
+    // 开始头像编辑
+    async startAvatarEdit(file) {
         try {
             // 验证文件
             if (!file) {
@@ -69,6 +84,299 @@ class ProfileManager {
                 return;
             }
 
+            // 保存文件引用
+            this.avatarEditor.file = file;
+            
+            // 重置编辑器状态
+            this.avatarEditor.scale = 1;
+            this.avatarEditor.x = 0;
+            this.avatarEditor.y = 0;
+            
+            // 读取文件并显示编辑器
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                this.showAvatarEditor(e.target.result);
+            };
+            reader.readAsDataURL(file);
+            
+        } catch (error) {
+            console.error('❌ 启动头像编辑失败:', error);
+            this.showError('basicInfo', '启动头像编辑失败');
+        }
+    }
+
+    // 显示头像编辑器
+    showAvatarEditor(imageDataUrl) {
+        const modal = document.getElementById('avatarEditorModal');
+        const cropImage = document.getElementById('cropImage');
+        const scaleSlider = document.getElementById('scaleSlider');
+        const xSlider = document.getElementById('xSlider');
+        const ySlider = document.getElementById('ySlider');
+        
+        // 确保模态框初始状态是隐藏的
+        modal.classList.add('hidden');
+        
+        // 设置图片
+        cropImage.src = imageDataUrl;
+        cropImage.onload = () => {
+            this.initAvatarEditor();
+            // 只有在图片加载完成后才显示模态框
+            modal.classList.remove('hidden');
+        };
+        
+        // 重置滑块
+        scaleSlider.value = 1;
+        xSlider.value = 0;
+        ySlider.value = 0;
+        
+        // 绑定事件（在显示前绑定）
+        this.bindAvatarEditorEvents();
+    }
+
+    // 初始化头像编辑器
+    initAvatarEditor() {
+        const cropImage = document.getElementById('cropImage');
+        const container = document.getElementById('cropContainer');
+        const xSlider = document.getElementById('xSlider');
+        const ySlider = document.getElementById('ySlider');
+        
+        // 获取容器尺寸
+        const containerWidth = container.offsetWidth;
+        const containerHeight = container.offsetHeight;
+        
+        // 确保图片已经加载
+        if (cropImage.complete && cropImage.naturalWidth > 0) {
+            this.setupImageSize();
+        } else {
+            cropImage.onload = () => {
+                this.setupImageSize();
+            };
+        }
+    }
+
+    // 设置图片尺寸和位置
+    setupImageSize() {
+        const cropImage = document.getElementById('cropImage');
+        const container = document.getElementById('cropContainer');
+        const xSlider = document.getElementById('xSlider');
+        const ySlider = document.getElementById('ySlider');
+        
+        // 获取容器尺寸
+        const containerWidth = container.offsetWidth;
+        const containerHeight = container.offsetHeight;
+        
+        // 获取图片原始尺寸
+        const imgWidth = cropImage.naturalWidth;
+        const imgHeight = cropImage.naturalHeight;
+        const aspectRatio = imgWidth / imgHeight;
+        
+        // 计算适合的显示尺寸
+        let displayWidth, displayHeight;
+        const cropCircleSize = 200; // 裁剪圆的直径
+        
+        // 确保图片至少能覆盖裁剪区域
+        if (aspectRatio > 1) {
+            // 横图：以能覆盖裁剪圆为准
+            displayWidth = Math.max(cropCircleSize * 1.5, containerWidth * 0.8);
+            displayHeight = displayWidth / aspectRatio;
+        } else {
+            // 竖图：以能覆盖裁剪圆为准
+            displayHeight = Math.max(cropCircleSize * 1.5, containerHeight * 0.8);
+            displayWidth = displayHeight * aspectRatio;
+        }
+        
+        // 设置图片显示尺寸
+        cropImage.style.width = displayWidth + 'px';
+        cropImage.style.height = displayHeight + 'px';
+        
+        // 初始位置：居中显示
+        this.avatarEditor.x = (containerWidth - displayWidth) / 2;
+        this.avatarEditor.y = (containerHeight - displayHeight) / 2;
+        
+        // 设置滑块范围（允许足够的移动空间）
+        const maxMoveX = Math.max(100, displayWidth / 3);
+        const maxMoveY = Math.max(100, displayHeight / 3);
+        xSlider.min = -maxMoveX;
+        xSlider.max = maxMoveX;
+        ySlider.min = -maxMoveY;
+        ySlider.max = maxMoveY;
+        
+        // 设置滑块初始值
+        xSlider.value = this.avatarEditor.x;
+        ySlider.value = this.avatarEditor.y;
+        
+        // 更新显示
+        this.updateImageTransform();
+        this.updatePreview();
+        
+        console.log('图片初始化完成:', {
+            original: { width: imgWidth, height: imgHeight },
+            display: { width: displayWidth, height: displayHeight },
+            position: { x: this.avatarEditor.x, y: this.avatarEditor.y }
+        });
+    }
+
+    // 绑定头像编辑器事件
+    bindAvatarEditorEvents() {
+        const cropImage = document.getElementById('cropImage');
+        const scaleSlider = document.getElementById('scaleSlider');
+        const xSlider = document.getElementById('xSlider');
+        const ySlider = document.getElementById('ySlider');
+        
+        // 滑块事件
+        scaleSlider.oninput = () => {
+            this.avatarEditor.scale = parseFloat(scaleSlider.value);
+            this.updateImageTransform();
+            this.updatePreview();
+        };
+        
+        xSlider.oninput = () => {
+            this.avatarEditor.x = parseFloat(xSlider.value);
+            this.updateImageTransform();
+            this.updatePreview();
+        };
+        
+        ySlider.oninput = () => {
+            this.avatarEditor.y = parseFloat(ySlider.value);
+            this.updateImageTransform();
+            this.updatePreview();
+        };
+        
+        // 鼠标拖拽事件
+        const startDrag = (clientX, clientY) => {
+            this.avatarEditor.isDragging = true;
+            this.avatarEditor.dragStart = {
+                x: clientX - this.avatarEditor.x,
+                y: clientY - this.avatarEditor.y
+            };
+        };
+        
+        const moveDrag = (clientX, clientY) => {
+            if (this.avatarEditor.isDragging) {
+                this.avatarEditor.x = clientX - this.avatarEditor.dragStart.x;
+                this.avatarEditor.y = clientY - this.avatarEditor.dragStart.y;
+                
+                // 更新滑块位置
+                xSlider.value = this.avatarEditor.x;
+                ySlider.value = this.avatarEditor.y;
+                
+                this.updateImageTransform();
+                this.updatePreview();
+            }
+        };
+        
+        const endDrag = () => {
+            this.avatarEditor.isDragging = false;
+        };
+        
+        // 鼠标事件
+        cropImage.onmousedown = (e) => {
+            e.preventDefault();
+            startDrag(e.clientX, e.clientY);
+        };
+        
+        document.onmousemove = (e) => {
+            moveDrag(e.clientX, e.clientY);
+        };
+        
+        document.onmouseup = endDrag;
+        
+        // 触摸事件（移动设备支持）
+        cropImage.ontouchstart = (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            startDrag(touch.clientX, touch.clientY);
+        };
+        
+        document.ontouchmove = (e) => {
+            if (this.avatarEditor.isDragging) {
+                e.preventDefault();
+                const touch = e.touches[0];
+                moveDrag(touch.clientX, touch.clientY);
+            }
+        };
+        
+        document.ontouchend = endDrag;
+    }
+
+    // 更新图片变换
+    updateImageTransform() {
+        const cropImage = document.getElementById('cropImage');
+        const transform = `translate(${this.avatarEditor.x}px, ${this.avatarEditor.y}px) scale(${this.avatarEditor.scale})`;
+        cropImage.style.transform = transform;
+    }
+
+    // 更新预览
+    updatePreview() {
+        const preview = document.getElementById('avatarPreview');
+        const cropImage = document.getElementById('cropImage');
+        const container = document.getElementById('cropContainer');
+        
+        if (!cropImage || !cropImage.offsetWidth || !cropImage.src) return;
+        
+        // 容器和裁剪圆信息
+        const containerWidth = container.offsetWidth;
+        const containerHeight = container.offsetHeight;
+        const cropRadius = 100; // 裁剪圆的半径（200px直径）
+        const cropCenterX = containerWidth / 2;
+        const cropCenterY = containerHeight / 2;
+        
+        // 图片当前显示信息（包含缩放和位移）
+        const imgDisplayWidth = cropImage.offsetWidth * this.avatarEditor.scale;
+        const imgDisplayHeight = cropImage.offsetHeight * this.avatarEditor.scale;
+        const imgLeft = this.avatarEditor.x;
+        const imgTop = this.avatarEditor.y;
+        
+        // 预览圆信息（80px直径）
+        const previewSize = 80;
+        
+        // 计算缩放比例：预览圆（80px）相对于裁剪圆（200px）= 80/200 = 0.4
+        const scaleRatio = previewSize / (cropRadius * 2);
+        
+        // 在预览中，图片的尺寸
+        const previewImgWidth = imgDisplayWidth * scaleRatio;
+        const previewImgHeight = imgDisplayHeight * scaleRatio;
+        
+        // 计算图片在预览中的位置
+        // 裁剪圆中心相对于图片左上角的位置
+        const cropCenterToImgX = cropCenterX - imgLeft;
+        const cropCenterToImgY = cropCenterY - imgTop;
+        
+        // 在预览中，图片应该放在什么位置，使得裁剪圆的中心对应预览圆的中心
+        const previewImgLeft = (previewSize / 2) - (cropCenterToImgX * scaleRatio);
+        const previewImgTop = (previewSize / 2) - (cropCenterToImgY * scaleRatio);
+        
+        // 设置预览背景
+        preview.style.backgroundImage = `url(${cropImage.src})`;
+        preview.style.backgroundSize = `${previewImgWidth}px ${previewImgHeight}px`;
+        preview.style.backgroundPosition = `${previewImgLeft}px ${previewImgTop}px`;
+        preview.style.backgroundRepeat = 'no-repeat';
+        
+        console.log('预览计算:', {
+            container: { width: containerWidth, height: containerHeight },
+            cropCircle: { centerX: cropCenterX, centerY: cropCenterY, radius: cropRadius },
+            image: { 
+                left: imgLeft, 
+                top: imgTop, 
+                displayWidth: imgDisplayWidth, 
+                displayHeight: imgDisplayHeight,
+                scale: this.avatarEditor.scale
+            },
+            cropCenterToImg: { x: cropCenterToImgX, y: cropCenterToImgY },
+            preview: {
+                size: previewSize,
+                scaleRatio: scaleRatio,
+                imgWidth: previewImgWidth,
+                imgHeight: previewImgHeight,
+                imgLeft: previewImgLeft,
+                imgTop: previewImgTop
+            }
+        });
+    }
+
+    // 上传头像（从编辑器裁剪后的图片）
+    async uploadAvatar(file) {
+        try {
             this.showLoading('basicInfo');
             this.clearAlert('basicInfo');
 
@@ -82,14 +390,19 @@ class ProfileManager {
             if (response && response.avatar_url && !response.error) {
                 this.showSuccess('basicInfo', '头像上传成功');
                 
-                // 更新头像显示
+                // 更新个人资料页面头像显示
                 const avatarDisplay = document.getElementById('avatarDisplay');
-                avatarDisplay.innerHTML = `<img src="${response.avatar_url}" alt="头像" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+                if (avatarDisplay) {
+                    avatarDisplay.innerHTML = `<img src="${response.avatar_url}" alt="头像" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+                }
                 
-                // 更新当前资料
+                // 更新当前资料数据
                 if (this.currentProfile) {
                     this.currentProfile.avatar_url = response.avatar_url;
                 }
+                
+                // 通知主页面更新头像（如果存在）
+                this.notifyMainPageAvatarUpdate(response.avatar_url);
                 
                 console.log('✅ 头像上传成功:', response.avatar_url);
             } else {
@@ -102,6 +415,164 @@ class ProfileManager {
             this.hideLoading('basicInfo');
             // 清空文件输入
             document.getElementById('avatarInput').value = '';
+        }
+    }
+
+    // 从Canvas裁剪图片
+    cropImageToBlob() {
+        return new Promise((resolve) => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const cropImage = document.getElementById('cropImage');
+            const container = document.getElementById('cropContainer');
+            
+            // 设置画布尺寸为裁剪圆的尺寸
+            const outputSize = 200;
+            canvas.width = outputSize;
+            canvas.height = outputSize;
+            
+            // 创建一个临时图片对象来获取原始图片数据
+            const tempImg = new Image();
+            tempImg.onload = () => {
+                try {
+                    // 容器和裁剪圆信息 - 与预览算法保持一致
+                    const containerWidth = container.offsetWidth;
+                    const containerHeight = container.offsetHeight;
+                    const cropRadius = 100; // 裁剪圆的半径（200px直径的一半）
+                    const cropCenterX = containerWidth / 2;
+                    const cropCenterY = containerHeight / 2;
+                    
+                    // 图片显示信息（包含缩放和位移） - 与预览算法保持一致
+                    const imgDisplayWidth = cropImage.offsetWidth * this.avatarEditor.scale;
+                    const imgDisplayHeight = cropImage.offsetHeight * this.avatarEditor.scale;
+                    const imgLeft = this.avatarEditor.x;
+                    const imgTop = this.avatarEditor.y;
+                    
+                    // 计算裁剪圆左上角相对于图片的位置 - 与预览算法保持一致
+                    const cropLeft = cropCenterX - cropRadius - imgLeft;
+                    const cropTop = cropCenterY - cropRadius - imgTop;
+                    const cropSize = cropRadius * 2; // 200px
+                    
+                    // 计算原始图片到显示图片的比例
+                    const scaleToOriginal = tempImg.width / imgDisplayWidth;
+                    
+                    // 在原始图片中的裁剪区域
+                    const sourceX = cropLeft * scaleToOriginal;
+                    const sourceY = cropTop * scaleToOriginal;
+                    const sourceSize = cropSize * scaleToOriginal;
+                    
+                    console.log('裁剪参数:', {
+                        container: { width: containerWidth, height: containerHeight },
+                        circle: { centerX: cropCenterX, centerY: cropCenterY, radius: cropRadius },
+                        image: { left: imgLeft, top: imgTop, displayWidth: imgDisplayWidth, displayHeight: imgDisplayHeight },
+                        crop: { left: cropLeft, top: cropTop, size: cropSize },
+                        source: { x: sourceX, y: sourceY, size: sourceSize },
+                        original: { width: tempImg.width, height: tempImg.height }
+                    });
+                    
+                    // 在画布上绘制裁剪后的图片
+                    ctx.drawImage(
+                        tempImg,
+                        sourceX, sourceY, sourceSize, sourceSize, // 源图裁剪区域
+                        0, 0, outputSize, outputSize // 目标区域（整个画布）
+                    );
+                    
+                    // 将画布内容转换为Blob
+                    canvas.toBlob((blob) => {
+                        console.log('裁剪完成，图片大小:', blob.size, 'bytes');
+                        resolve(blob);
+                    }, 'image/png', 0.9);
+                    
+                } catch (error) {
+                    console.error('裁剪过程出错:', error);
+                    // 如果裁剪失败，返回一个空的Blob
+                    canvas.toBlob((blob) => {
+                        resolve(blob);
+                    }, 'image/png', 0.9);
+                }
+            };
+            
+            tempImg.onerror = () => {
+                console.error('图片加载失败');
+                canvas.toBlob((blob) => {
+                    resolve(blob);
+                }, 'image/png', 0.9);
+            };
+            
+            tempImg.src = cropImage.src;
+        });
+    }
+
+    // 确认头像编辑
+    async confirmAvatarEdit() {
+        try {
+            // 获取裁剪后的图片
+            const croppedBlob = await this.cropImageToBlob();
+            
+            // 创建File对象
+            const croppedFile = new File([croppedBlob], 'avatar.png', { type: 'image/png' });
+            
+            // 隐藏编辑器
+            this.hideAvatarEditor();
+            
+            // 上传裁剪后的图片
+            await this.uploadAvatar(croppedFile);
+            
+        } catch (error) {
+            console.error('❌ 确认头像编辑失败:', error);
+            this.showError('basicInfo', '处理头像失败');
+        }
+    }
+
+    // 取消头像编辑
+    cancelAvatarEdit() {
+        this.hideAvatarEditor();
+        // 清空文件输入
+        document.getElementById('avatarInput').value = '';
+    }
+
+    // 隐藏头像编辑器
+    hideAvatarEditor() {
+        const modal = document.getElementById('avatarEditorModal');
+        modal.classList.add('hidden');
+        
+        // 清理事件监听器
+        document.onmousemove = null;
+        document.onmouseup = null;
+        document.ontouchmove = null;
+        document.ontouchend = null;
+        
+        // 重置编辑器状态
+        this.avatarEditor = {
+            file: null,
+            scale: 1,
+            x: 0,
+            y: 0,
+            isDragging: false,
+            dragStart: { x: 0, y: 0 }
+        };
+    }
+
+    // 通知主页面更新头像
+    notifyMainPageAvatarUpdate(avatarUrl) {
+        try {
+            // 使用localStorage存储头像更新事件
+            localStorage.setItem('avatarUpdated', JSON.stringify({
+                url: avatarUrl,
+                timestamp: Date.now()
+            }));
+            
+            // 如果是在同一个域名下，尝试直接更新父页面
+            if (window.parent && window.parent !== window) {
+                window.parent.postMessage({
+                    type: 'AVATAR_UPDATED',
+                    avatarUrl: avatarUrl
+                }, '*');
+            }
+            
+            console.log('头像更新通知已发送');
+        } catch (error) {
+            console.log('通知主页面失败，这是正常的:', error.message);
         }
     }
 

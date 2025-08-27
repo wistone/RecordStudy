@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>个人资料 - 学习搭子</title>
-    <link rel="stylesheet" href="styles/main.css?v=20250827-1">
+    <link rel="stylesheet" href="styles/main.css?v=20250827-2">
     <style>
         .profile-container {
             max-width: 800px;
@@ -253,6 +253,127 @@
             display: none;
         }
 
+        /* 头像编辑器样式 */
+        .avatar-editor-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+
+        .avatar-editor-modal.hidden {
+            display: none !important;
+        }
+
+        .avatar-editor-content {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .avatar-editor-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .avatar-crop-container {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            margin: 20px auto;
+            border: 2px solid #ddd;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #f8f9fa;
+        }
+
+        .avatar-crop-image {
+            position: absolute;
+            cursor: move;
+            transition: transform 0.1s ease-out;
+            transform-origin: top left;
+            max-width: none;
+            max-height: none;
+        }
+
+        .avatar-crop-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .avatar-crop-circle {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 200px;
+            height: 200px;
+            border: 2px solid #007bff;
+            border-radius: 50%;
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+        }
+
+        .avatar-editor-controls {
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .avatar-control-group {
+            margin-bottom: 15px;
+        }
+
+        .avatar-control-label {
+            display: block;
+            font-weight: 500;
+            color: #555;
+            margin-bottom: 8px;
+        }
+
+        .avatar-slider {
+            width: 100%;
+            max-width: 250px;
+            margin: 0 auto;
+            display: block;
+        }
+
+        .avatar-preview {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 2px solid #ddd;
+            margin: 0 auto 20px;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
+        .avatar-editor-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .avatar-editor-buttons .btn {
+            min-width: 80px;
+        }
+
         .back-button {
             position: fixed;
             top: 20px;
@@ -400,6 +521,51 @@
         </div>
     </div>
 
+    <!-- 头像编辑器模态框 -->
+    <div class="avatar-editor-modal hidden" id="avatarEditorModal">
+        <div class="avatar-editor-content">
+            <h3 class="avatar-editor-title">调整头像</h3>
+            
+            <!-- 预览区域 -->
+            <div class="avatar-preview" id="avatarPreview"></div>
+            
+            <!-- 裁剪区域 -->
+            <div class="avatar-crop-container" id="cropContainer">
+                <img class="avatar-crop-image" id="cropImage" />
+                <div class="avatar-crop-overlay">
+                    <div class="avatar-crop-circle"></div>
+                </div>
+            </div>
+            
+            <!-- 控制区域 -->
+            <div class="avatar-editor-controls">
+                <div class="avatar-control-group">
+                    <label class="avatar-control-label">缩放</label>
+                    <input type="range" class="avatar-slider" id="scaleSlider" 
+                           min="0.5" max="3" step="0.1" value="1" />
+                </div>
+                
+                <div class="avatar-control-group">
+                    <label class="avatar-control-label">水平位置</label>
+                    <input type="range" class="avatar-slider" id="xSlider" 
+                           min="-100" max="100" step="5" value="0" />
+                </div>
+                
+                <div class="avatar-control-group">
+                    <label class="avatar-control-label">垂直位置</label>
+                    <input type="range" class="avatar-slider" id="ySlider" 
+                           min="-100" max="100" step="5" value="0" />
+                </div>
+            </div>
+            
+            <!-- 操作按钮 -->
+            <div class="avatar-editor-buttons">
+                <button class="btn btn-secondary" onclick="cancelAvatarEdit()">取消</button>
+                <button class="btn btn-primary" onclick="confirmAvatarEdit()">确认上传</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Include Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- Include Environment Variables -->
@@ -409,7 +575,7 @@
     <!-- Include API Service -->
     <script src="js/api-service.js?v=20250825-6"></script>
     <!-- Include Profile Logic -->
-    <script src="js/profile.js?v=20250827-2"></script>
+    <script src="js/profile.js?v=20250827-7"></script>
 
     <script>
         // 页面初始化
@@ -460,7 +626,19 @@
             if (!file) return;
 
             if (window.profileManager) {
-                await window.profileManager.uploadAvatar(file);
+                await window.profileManager.startAvatarEdit(file);
+            }
+        }
+
+        function cancelAvatarEdit() {
+            if (window.profileManager) {
+                window.profileManager.cancelAvatarEdit();
+            }
+        }
+
+        async function confirmAvatarEdit() {
+            if (window.profileManager) {
+                await window.profileManager.confirmAvatarEdit();
             }
         }
 
