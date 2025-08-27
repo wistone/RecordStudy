@@ -80,33 +80,60 @@ async def get_records(
         # 执行查询
         response = query.order('occurred_at', desc=True).range(skip, skip + limit - 1).execute()
         
-        # 获取记录的标签信息
+        # 批量获取所有记录的标签信息（解决N+1查询问题）
         records_with_tags = []
-        for record in response.data:
-            if record.get('resource_id'):
+        if response.data:
+            # 1. 收集所有有效的resource_id
+            resource_ids = [record['resource_id'] for record in response.data if record.get('resource_id')]
+            
+            # 2. 如果有资源ID，批量查询所有标签信息
+            resource_tags_map = {}  # resource_id -> tag_names
+            if resource_ids:
                 try:
-                    # 查询资源标签关联
-                    resource_tags_response = client.table('resource_tags').select('tag_id').eq('user_id', current_user_id).eq('resource_id', record['resource_id']).execute()
+                    # 批量查询资源标签关联
+                    resource_tags_response = client.table('resource_tags')\
+                        .select('resource_id, tag_id')\
+                        .eq('user_id', current_user_id)\
+                        .in_('resource_id', resource_ids)\
+                        .execute()
                     
-                    tag_names = []
                     if resource_tags_response.data:
-                        # 获取所有标签ID
-                        tag_ids = [rt['tag_id'] for rt in resource_tags_response.data]
+                        # 收集所有标签ID
+                        tag_ids = list(set([rt['tag_id'] for rt in resource_tags_response.data]))
                         
                         if tag_ids:
-                            # 查询标签名称
-                            tags_response = client.table('tags').select('tag_name').in_('tag_id', tag_ids).execute()
+                            # 批量查询标签名称
+                            tags_response = client.table('tags')\
+                                .select('tag_id, tag_name')\
+                                .in_('tag_id', tag_ids)\
+                                .execute()
+                            
+                            # 构建tag_id -> tag_name映射
+                            tag_id_to_name = {}
                             if tags_response.data:
-                                tag_names = [tag['tag_name'] for tag in tags_response.data]
-                    
-                    record['tags'] = ','.join(tag_names) if tag_names else ''
+                                tag_id_to_name = {tag['tag_id']: tag['tag_name'] for tag in tags_response.data}
+                            
+                            # 构建resource_id -> tag_names映射
+                            for rt in resource_tags_response.data:
+                                resource_id = rt['resource_id']
+                                tag_name = tag_id_to_name.get(rt['tag_id'])
+                                
+                                if tag_name:
+                                    if resource_id not in resource_tags_map:
+                                        resource_tags_map[resource_id] = []
+                                    resource_tags_map[resource_id].append(tag_name)
+                                    
                 except Exception as tag_error:
-                    print(f"标签查询失败: {tag_error}")
-                    record['tags'] = ''
-            else:
-                record['tags'] = ''
+                    print(f"批量标签查询失败: {tag_error}")
             
-            records_with_tags.append(record)
+            # 3. 组装最终结果
+            for record in response.data:
+                resource_id = record.get('resource_id')
+                if resource_id and resource_id in resource_tags_map:
+                    record['tags'] = ','.join(resource_tags_map[resource_id])
+                else:
+                    record['tags'] = ''
+                records_with_tags.append(record)
         
         return {
             "records": records_with_tags,
@@ -184,6 +211,29 @@ async def create_record(
         
         # 重新查询记录以包含标签信息（使用与get_records相同的逻辑）
         record_with_tags = await get_record_with_tags(client, record_id, current_user_id)
+        
+        # 异步清除汇总缓存（新记录会影响统计数据）
+        try:
+            from .summaries import get_cache_key, _cache, _cache_expiry
+            
+            # 清除该用户的所有汇总缓存
+            keys_to_remove = []
+            for key in _cache.keys():
+                if key.startswith(f"{current_user_id}:"):
+                    keys_to_remove.append(key)
+            
+            for key in keys_to_remove:
+                if key in _cache:
+                    del _cache[key]
+                if key in _cache_expiry:
+                    del _cache_expiry[key]
+                    
+            print(f"✅ 清除了 {len(keys_to_remove)} 个缓存条目")
+                    
+        except Exception as cache_error:
+            print(f"⚠️ 清除缓存失败: {cache_error}")
+            # 缓存清除失败不应影响记录创建
+        
         return record_with_tags
         
     except Exception as e:

@@ -12,31 +12,86 @@ class LearningBuddyApp {
     }
 
     async init() {
+        // 🚫 暂时禁用缓存服务初始化
+        // if (window.cacheService) {
+        //     await window.cacheService.init();
+        // }
+        
         await this.loadData();
         this.setupEventListeners();
         this.updateDashboard();
         this.renderRecentRecords();
         this.updateConditionalSections();
+        
+        // 🚫 暂时禁用缓存清理
+        // if (window.cacheService && window.cacheService.isInitialized) {
+        //     setTimeout(() => {
+        //         window.cacheService.cleanupExpired();
+        //     }, 5000);
+        // }
     }
 
-    // Load data from backend API
+    // Load data from backend API - 优化版本
     async loadData() {
         try {
             this.showLoading(true);
             
-            // 获取最近30天的学习记录
-            const response = await window.apiService.getRecords({ limit: 100, days: 30 });
-            this.records = response.records ? response.records.map(record => this.convertBackendRecord(record)) : [];
+            // 🚀 使用新的汇总API，大幅减少数据传输和处理时间
+            console.log('📡 正在加载首页汇总数据...');
             
-            console.log('📊 已加载学习记录:', this.records.length, '条');
+            // 并行加载不同时间段的汇总数据，使用独立错误处理避免一个失败导致全部失败
+            const [weekResult, monthResult, recentResult] = await Promise.allSettled([
+                window.apiService.getDashboardSummary(7),  // 最近7天汇总(本周)
+                window.apiService.getDashboardSummary(30), // 最近30天汇总(本月)
+                window.apiService.getRecentRecords(20)     // 最近20条记录
+            ]);
+            
+            // 安全地提取数据，处理部分失败的情况
+            this.weekSummary = weekResult.status === 'fulfilled' ? weekResult.value : null;
+            this.monthSummary = monthResult.status === 'fulfilled' ? monthResult.value : null;
+            this.dashboardSummary = this.weekSummary || this.monthSummary; // 保持兼容性
+            
+            console.log('📊 汇总数据加载结果:', {
+                week: weekResult.status,
+                month: monthResult.status,
+                recent: recentResult.status
+            });
+            
+            // 转换最近记录格式（保持兼容性）
+            const recentRecordsData = recentResult.status === 'fulfilled' ? recentResult.value : null;
+            this.records = recentRecordsData?.records ? 
+                recentRecordsData.records.map(record => this.convertRecentRecord(record)) : [];
+            
+            console.log('✅ 已加载汇总数据和', this.records.length, '条最近记录');
             
         } catch (error) {
             console.error('❌ 加载数据失败:', error);
             this.showError('加载数据失败，请检查网络连接和后端服务');
-            this.records = []; // 显示空状态
+            this.records = [];
+            this.dashboardSummary = null;
         } finally {
             this.showLoading(false);
         }
+    }
+    
+    // 转换最近记录格式（轻量版）
+    convertRecentRecord(backendRecord) {
+        const typeIcons = {
+            video: '📹', podcast: '🎙️', book: '📚', course: '🎓',
+            article: '📄', exercise: '✏️', project: '💻', other: '📌'
+        };
+        
+        const recordDate = new Date(backendRecord.occurred_at);
+        
+        return {
+            id: backendRecord.id,
+            type: backendRecord.type,
+            icon: typeIcons[backendRecord.type] || '📌',
+            title: backendRecord.title,
+            duration: backendRecord.duration_min || 0,
+            date: recordDate,
+            time: recordDate.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+        };
     }
     
     // 转换后端记录格式为前端格式
@@ -159,9 +214,7 @@ class LearningBuddyApp {
         if (page === 'records') {
             this.renderAllRecords();
         } else if (page === 'analytics') {
-            this.renderAnalytics();
-            this.renderMiniCalendar();
-            this.renderChart();
+            this.loadAnalyticsData();
         }
     }
 
@@ -296,9 +349,11 @@ class LearningBuddyApp {
             // 发送到后端
             const savedRecord = await window.apiService.createRecord(recordPayload);
             
-            // 转换并添加到本地记录
-            const convertedRecord = this.convertBackendRecord(savedRecord);
-            this.records.unshift(convertedRecord);
+            // 🚀 清除相关缓存（新记录会改变汇总数据）
+            await this.clearCacheAfterRecordCreation();
+            
+            // 重新加载最新数据而不是依赖本地转换
+            await this.loadData();
             
             // Update UI based on current page
             this.updateDashboard();
@@ -409,6 +464,118 @@ class LearningBuddyApp {
         let loadingElement = document.getElementById('loadingIndicator');
         
         if (show) {
+            // 🚀 新增：显示骨架屏而不是遮罩加载
+            this.showSkeletonLoading();
+        } else {
+            // 隐藏骨架屏
+            this.hideSkeletonLoading();
+            
+            // 清理旧的加载指示器（保持兼容）
+            if (loadingElement) {
+                loadingElement.remove();
+            }
+        }
+    }
+    
+    // 显示骨架屏加载效果
+    showSkeletonLoading() {
+        // 为汇总卡片添加骨架效果
+        const summaryCards = document.querySelectorAll('.summary-card .metric-value');
+        summaryCards.forEach(card => {
+            if (!card.classList.contains('skeleton')) {
+                card.classList.add('skeleton');
+                card.setAttribute('data-original-text', card.textContent);
+                card.textContent = '';
+            }
+        });
+        
+        // 为最近记录添加骨架效果
+        const recentRecordsList = document.getElementById('recentRecordsList');
+        if (recentRecordsList && !recentRecordsList.querySelector('.skeleton-record')) {
+            recentRecordsList.innerHTML = Array(5).fill(0).map(() => `
+                <div class="record-item skeleton-record">
+                    <div class="record-icon skeleton"></div>
+                    <div class="record-content">
+                        <div class="skeleton skeleton-title"></div>
+                        <div class="skeleton skeleton-subtitle"></div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // 添加骨架样式到文档头部（如果还没有）
+        if (!document.getElementById('skeleton-styles')) {
+            const skeletonStyles = document.createElement('style');
+            skeletonStyles.id = 'skeleton-styles';
+            skeletonStyles.textContent = `
+                .skeleton {
+                    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+                    background-size: 200% 100%;
+                    animation: skeletonLoading 1.5s infinite;
+                    border-radius: 4px;
+                }
+                
+                .skeleton-title {
+                    height: 16px;
+                    width: 70%;
+                    margin-bottom: 8px;
+                }
+                
+                .skeleton-subtitle {
+                    height: 12px;
+                    width: 50%;
+                }
+                
+                .skeleton-record {
+                    padding: 12px;
+                    border-bottom: 1px solid #f5f5f5;
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                }
+                
+                .skeleton-record .record-icon {
+                    width: 24px;
+                    height: 24px;
+                    border-radius: 50%;
+                }
+                
+                .skeleton-record .record-content {
+                    flex: 1;
+                }
+                
+                @keyframes skeletonLoading {
+                    0% { background-position: -200% 0; }
+                    100% { background-position: 200% 0; }
+                }
+            `;
+            document.head.appendChild(skeletonStyles);
+        }
+    }
+    
+    // 隐藏骨架屏
+    hideSkeletonLoading() {
+        // 恢复汇总卡片内容
+        const skeletonCards = document.querySelectorAll('.summary-card .metric-value.skeleton');
+        skeletonCards.forEach(card => {
+            card.classList.remove('skeleton');
+            const originalText = card.getAttribute('data-original-text');
+            if (originalText) {
+                card.textContent = originalText;
+                card.removeAttribute('data-original-text');
+            }
+        });
+        
+        // 移除骨架记录（真实数据会在renderRecentRecords中填充）
+        const skeletonRecords = document.querySelectorAll('.skeleton-record');
+        skeletonRecords.forEach(record => record.remove());
+    }
+    
+    // 原有的全屏加载方法（保持兼容性）
+    showFullscreenLoading(show) {
+        let loadingElement = document.getElementById('loadingIndicator');
+        
+        if (show) {
             if (!loadingElement) {
                 loadingElement = document.createElement('div');
                 loadingElement.id = 'loadingIndicator';
@@ -460,6 +627,67 @@ class LearningBuddyApp {
     }
 
     updateDashboard() {
+        // 🚀 使用预计算的汇总数据，避免前端重复计算
+        if (this.weekSummary && this.monthSummary) {
+            console.log('📊 使用预计算汇总数据更新仪表盘');
+            
+            // 更新今日数据 - 使用周数据中的今日统计
+            const todayEl = document.getElementById('todayDuration');
+            const todayRecordsEl = document.getElementById('todayRecords');
+            if (todayEl) todayEl.textContent = this.weekSummary.today?.duration_minutes || 0;
+            if (todayRecordsEl) todayRecordsEl.textContent = this.weekSummary.today?.count || 0;
+            
+            // 更新周数据（最近7天）
+            const weekDurationEl = document.getElementById('weekDuration');
+            const weekDaysEl = document.getElementById('weekDays');
+            if (weekDurationEl) weekDurationEl.textContent = this.weekSummary.total_duration_hours || 0;
+            if (weekDaysEl) weekDaysEl.textContent = this.weekSummary.learning_days || 0;
+            
+            // 更新月数据（最近30天） - 使用正确的月度数据
+            const monthDurationEl = document.getElementById('monthDuration');
+            const monthStreakEl = document.getElementById('monthStreak');
+            if (monthDurationEl) monthDurationEl.textContent = this.monthSummary.total_duration_hours || 0;
+            if (monthStreakEl) monthStreakEl.textContent = this.monthSummary.streak_days || 0;
+            
+            // 更新连续天数徽章 - 使用月度数据的连续天数
+            const streakEl = document.getElementById('streakDays');
+            if (streakEl) streakEl.textContent = this.monthSummary.streak_days || 0;
+            
+            console.log('✅ 仪表盘数据更新完成', {
+                week: this.weekSummary, 
+                month: this.monthSummary
+            });
+            
+        } else if (this.dashboardSummary) {
+            // 单一汇总数据的回退逻辑
+            console.log('📊 使用单一汇总数据更新仪表盘');
+            const summary = this.dashboardSummary;
+            
+            const todayEl = document.getElementById('todayDuration');
+            const todayRecordsEl = document.getElementById('todayRecords');
+            const weekDurationEl = document.getElementById('weekDuration');
+            const weekDaysEl = document.getElementById('weekDays');
+            const monthDurationEl = document.getElementById('monthDuration');
+            const monthStreakEl = document.getElementById('monthStreak');
+            const streakEl = document.getElementById('streakDays');
+            
+            if (todayEl) todayEl.textContent = summary.today?.duration_minutes || 0;
+            if (todayRecordsEl) todayRecordsEl.textContent = summary.today?.count || 0;
+            if (weekDurationEl) weekDurationEl.textContent = summary.total_duration_hours || 0;
+            if (weekDaysEl) weekDaysEl.textContent = summary.learning_days || 0;
+            if (monthDurationEl) monthDurationEl.textContent = summary.total_duration_hours || 0;
+            if (monthStreakEl) monthStreakEl.textContent = summary.streak_days || 0;
+            if (streakEl) streakEl.textContent = summary.streak_days || 0;
+            
+        } else {
+            // 回退到原来的计算方式（如果汇总数据不可用）
+            console.log('⚠️ 汇总数据不可用，回退到客户端计算');
+            this.updateDashboardFallback();
+        }
+    }
+    
+    // 回退方案：客户端计算（保持兼容性）
+    updateDashboardFallback() {
         const today = new Date();
         const todayString = today.toDateString();
         
@@ -481,17 +709,21 @@ class LearningBuddyApp {
         const monthStreak = this.calculateStreak();
         
         // Update UI
-        document.getElementById('todayDuration').textContent = todayDuration;
-        document.getElementById('todayRecords').textContent = todayRecords.length;
+        const todayEl = document.getElementById('todayDuration');
+        const todayRecordsEl = document.getElementById('todayRecords');
+        const weekDurationEl = document.getElementById('weekDuration');
+        const weekDaysEl = document.getElementById('weekDays');
+        const monthDurationEl = document.getElementById('monthDuration');
+        const monthStreakEl = document.getElementById('monthStreak');
+        const streakEl = document.getElementById('streakDays');
         
-        document.getElementById('weekDuration').textContent = Math.round(weekDuration / 60 * 10) / 10; // Convert to hours with 1 decimal
-        document.getElementById('weekDays').textContent = weekDays;
-        
-        document.getElementById('monthDuration').textContent = Math.round(monthDuration / 60 * 10) / 10; // Convert to hours
-        document.getElementById('monthStreak').textContent = monthStreak;
-        
-        // Update streak badge
-        document.getElementById('streakDays').textContent = monthStreak;
+        if (todayEl) todayEl.textContent = todayDuration;
+        if (todayRecordsEl) todayRecordsEl.textContent = todayRecords.length;
+        if (weekDurationEl) weekDurationEl.textContent = Math.round(weekDuration / 60 * 10) / 10;
+        if (weekDaysEl) weekDaysEl.textContent = weekDays;
+        if (monthDurationEl) monthDurationEl.textContent = Math.round(monthDuration / 60 * 10) / 10;
+        if (monthStreakEl) monthStreakEl.textContent = monthStreak;
+        if (streakEl) streakEl.textContent = monthStreak;
     }
 
     calculateStreak() {
@@ -511,6 +743,30 @@ class LearningBuddyApp {
         }
         
         return streak;
+    }
+    
+    // 记录创建后清除相关缓存
+    async clearCacheAfterRecordCreation() {
+        try {
+            console.log('🗑️ 清除缓存（新记录已创建）');
+            
+            // 清除 IndexedDB 缓存
+            if (window.cacheService && window.cacheService.isInitialized) {
+                await Promise.all([
+                    window.cacheService.clearByType('dashboard'),
+                    window.cacheService.clearByType('recent-records')
+                ]);
+            }
+            
+            // 清除内存缓存
+            if (window.apiService) {
+                window.apiService.clearCache('summaries');
+            }
+            
+            console.log('✅ 缓存清除完成');
+        } catch (error) {
+            console.error('❌ 清除缓存失败:', error);
+        }
     }
 
     // Update conditional display sections based on data availability
@@ -950,24 +1206,91 @@ class LearningBuddyApp {
     }
     
     updateChartInfo(data) {
-        const totalDuration = data.reduce((sum, val) => sum + val, 0);
-        const avgDuration = data.length > 0 ? Math.round(totalDuration / data.length) : 0;
-        const maxDuration = Math.max(...data);
+        // 🚫 不再使用图表分组数据计算总时长，因为可能不完整
+        // 改为基于完整的 this.records 数据计算正确的时长
         
-        // You can add this info to the chart header if needed
-        let periodInfo = '';
+        let totalDuration = 0;
+        let periodLabel = '';
+        
         if (this.currentPeriod === 'week') {
-            periodInfo = `本周总计: ${totalDuration}分钟`;
+            // 最近7天的数据
+            const weekAgo = new Date();
+            weekAgo.setDate(weekAgo.getDate() - 7);
+            const weekRecords = this.records.filter(r => r.date >= weekAgo);
+            totalDuration = weekRecords.reduce((sum, r) => sum + r.duration, 0);
+            periodLabel = `本周总计: ${totalDuration}分钟 (${(totalDuration/60).toFixed(1)}小时)`;
         } else if (this.currentPeriod === 'month') {
-            periodInfo = `30天总计: ${Math.round(totalDuration/60*10)/10}小时`;
+            // 最近30天的数据  
+            const monthAgo = new Date();
+            monthAgo.setDate(monthAgo.getDate() - 30);
+            const monthRecords = this.records.filter(r => r.date >= monthAgo);
+            totalDuration = monthRecords.reduce((sum, r) => sum + r.duration, 0);
+            periodLabel = `30天总计: ${(totalDuration/60).toFixed(1)}小时`;
         } else {
-            periodInfo = `12月总计: ${Math.round(totalDuration/60*10)/10}小时`;
+            // 年视图 - 使用所有记录
+            totalDuration = this.records.reduce((sum, r) => sum + r.duration, 0);
+            periodLabel = `全年总计: ${(totalDuration/60).toFixed(1)}小时`;
         }
+        
+        console.log(`📊 ${this.currentPeriod} 视图计算:`, {
+            recordCount: this.records.length,
+            totalDuration: `${totalDuration}分钟`,
+            hours: `${(totalDuration/60).toFixed(1)}小时`
+        });
         
         // Update the section title with summary info
         const titleElement = document.querySelector('.time-stats-container .section-title');
         if (titleElement) {
-            titleElement.innerHTML = `学习时长趋势 <small style="font-size: 13px; color: var(--text-secondary); font-weight: 400;">${periodInfo}</small>`;
+            titleElement.innerHTML = `学习时长趋势 <small style="font-size: 13px; color: var(--text-secondary); font-weight: 400;">${periodLabel}</small>`;
+        }
+    }
+    
+    async loadAnalyticsData() {
+        try {
+            // Show loading state
+            this.showLoading(true);
+            
+            // Load complete records data for analytics (last 90 days to have enough data)
+            const analyticsResponse = await window.apiService.getRecords({ 
+                limit: 100,  // Maximum allowed by API
+                days: 90     // Last 90 days
+            });
+            
+            // Extract records array from response
+            const analyticsRecords = analyticsResponse?.records || [];
+            
+            // Convert to the expected format
+            if (analyticsRecords && analyticsRecords.length > 0) {
+                this.records = analyticsRecords.map(record => ({
+                    id: record.record_id,
+                    title: record.title,
+                    type: record.form_type,
+                    duration: record.duration_min || 0,
+                    date: new Date(record.occurred_at),
+                    difficulty: record.difficulty || null,
+                    focus: record.focus || null,
+                    mood: record.mood || '',
+                    tags: record.tag_names || []
+                }));
+            } else {
+                this.records = [];
+            }
+            
+            // Now render analytics with complete data
+            this.renderAnalytics();
+            this.renderMiniCalendar();
+            this.renderChart();
+            
+            console.log(`📊 Analytics loaded with ${this.records.length} records`);
+            
+        } catch (error) {
+            console.error('❌ Analytics data loading failed:', error);
+            // Fallback to existing data if any
+            this.renderAnalytics();
+            this.renderMiniCalendar();  
+            this.renderChart();
+        } finally {
+            this.showLoading(false);
         }
     }
 }

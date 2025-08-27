@@ -94,15 +94,28 @@ class APIService {
         }
     }
 
+    // === 汇总数据API（优化版 + IndexedDB缓存） ===
+    
+    async getDashboardSummary(days = 7) {
+        // 🚫 暂时禁用所有缓存，直接调用API获取最新数据
+        console.log('📡 直接请求汇总数据 API (无缓存):', `days=${days}`);
+        const data = await this.request(`/summaries/dashboard?days=${days}`);
+        return data;
+    }
+    
+    async getRecentRecords(limit = 10) {
+        // 🚫 暂时禁用所有缓存，直接调用API获取最新数据
+        console.log('📡 直接请求最近记录 API (无缓存):', `limit=${limit}`);
+        const data = await this.request(`/summaries/recent-records?limit=${limit}`);
+        return data;
+    }
+
     // === 学习记录相关API ===
 
     async getRecords(params = {}) {
         const { skip = 0, limit = 50, days = null } = params;
         
-        const cacheKey = this.getCacheKey('/records', params);
-        const cached = this.getFromCache(cacheKey);
-        if (cached) return cached;
-
+        // 🚫 暂时禁用缓存，直接调用API
         // 构建查询参数
         const queryParams = new URLSearchParams();
         queryParams.set('skip', skip);
@@ -110,8 +123,8 @@ class APIService {
         if (days) queryParams.set('days', days);
         
         const url = `/records?${queryParams.toString()}`;
+        console.log('📡 直接请求记录数据 API (无缓存):', url);
         const data = await this.request(url);
-        this.setCache(cacheKey, data);
         return data;
     }
 

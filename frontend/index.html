@@ -115,7 +115,7 @@
                                 <div class="card-metrics">
                                     <div class="metric">
                                         <div class="metric-value" id="weekDuration">0</div>
-                                        <div class="metric-label">分钟</div>
+                                        <div class="metric-label">小时</div>
                                     </div>
                                     <div class="metric">
                                         <div class="metric-value" id="weekDays">0</div>
@@ -131,7 +131,7 @@
                                 <div class="card-metrics">
                                     <div class="metric">
                                         <div class="metric-value" id="monthDuration">0</div>
-                                        <div class="metric-label">分钟</div>
+                                        <div class="metric-label">小时</div>
                                     </div>
                                     <div class="metric">
                                         <div class="metric-value" id="monthStreak">0</div>
@@ -443,12 +443,14 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- Include Environment Variables -->
     <script src="js/env.js"></script>
+    <!-- Include Cache Service (temporarily disabled) -->
+    <!-- <script src="js/cache-service.js?v=20250827-1"></script> -->
     <!-- Include Authentication Service -->
     <script src="js/auth.js?v=20250825-6"></script>
     <!-- Include API Service -->
-    <script src="js/api-service.js?v=20250825-6"></script>
+    <script src="js/api-service.js?v=20250827-nocache"></script>
     <!-- Include Main Application -->
-    <script src="js/app.js?v=20250827-1"></script>
+    <script src="js/app.js?v=20250827-fixcalc"></script>
     
     <script>
         let isRedirecting = false; // 防止重复重定向
