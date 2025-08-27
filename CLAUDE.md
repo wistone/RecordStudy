@@ -80,7 +80,7 @@ CORS_ORIGINS=http://localhost:3000,http://localhost:3001,http://localhost:8000
 
 ### Demo User
 - **Email**: demo@example.com
-- **Password**: abc123
+- **Password**: abc123123
 - **User ID**: 6d45fa47-7935-4673-ac25-bc39ca3f3481
 - **Records**: 23 sample learning entries
 

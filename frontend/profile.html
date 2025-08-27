@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人资料 - 学习搭子</title>
+    <link rel="stylesheet" href="styles/main.css?v=20250827-1">
+    <style>
+        .profile-container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .profile-header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .profile-avatar {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+
+        .avatar-image {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            border: 4px solid #ddd;
+            object-fit: cover;
+            background: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            color: #888;
+        }
+
+        .avatar-upload {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .avatar-upload:hover {
+            background: #0056b3;
+        }
+
+        .profile-sections {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .profile-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 25px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #007bff;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+        }
+
+        .form-group input:disabled {
+            background-color: #f5f5f5;
+            color: #999;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #545b62;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .alert {
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .alert-success {
+            color: #155724;
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+        }
+
+        .alert-danger {
+            color: #721c24;
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .info-item:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            font-weight: 500;
+            color: #555;
+        }
+
+        .info-value {
+            color: #333;
+        }
+
+        .info-edit-item {
+            padding: 12px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .info-display {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .info-value-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .btn-edit {
+            background: #f8f9fa;
+            color: #007bff;
+            border: 1px solid #007bff;
+            border-radius: 4px;
+            padding: 4px 12px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-edit:hover {
+            background: #007bff;
+            color: white;
+        }
+
+        .info-edit {
+            margin-top: 15px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            border: 1px solid #dee2e6;
+        }
+
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        #avatarInput {
+            display: none;
+        }
+
+        .back-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+
+        .back-button:hover {
+            background: #0056b3;
+        }
+
+        @media (max-width: 768px) {
+            .profile-container {
+                margin: 20px;
+                padding: 15px;
+            }
+
+            .profile-sections {
+                gap: 20px;
+            }
+
+            .profile-section {
+                padding: 20px;
+            }
+
+            .btn-group {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="back-button" onclick="goBack()" title="返回">←</button>
+    
+    <div class="profile-container">
+        <div class="profile-header">
+            <div class="profile-avatar">
+                <div class="avatar-image" id="avatarDisplay">👤</div>
+                <button class="avatar-upload" onclick="selectAvatar()" title="更换头像">📷</button>
+                <input type="file" id="avatarInput" accept="image/*" onchange="handleAvatarChange(event)">
+            </div>
+            <h1 class="profile-name">个人资料</h1>
+            <p class="profile-subtitle">管理您的账户信息和设置</p>
+        </div>
+
+        <div class="profile-sections">
+            <!-- 基础信息 -->
+            <div class="profile-section">
+                <h2 class="section-title">基础信息</h2>
+                <div id="basicInfoAlert"></div>
+                
+                <!-- 显示名称 -->
+                <div class="info-edit-item">
+                    <div class="info-display" id="nameDisplay">
+                        <span class="info-label">显示名称</span>
+                        <div class="info-value-group">
+                            <span class="info-value" id="currentDisplayName">加载中...</span>
+                            <button class="btn-edit" onclick="editDisplayName()">修改</button>
+                        </div>
+                    </div>
+                    <div class="info-edit hidden" id="nameEdit">
+                        <div class="form-group">
+                            <label for="newDisplayName">新显示名称</label>
+                            <input type="text" id="newDisplayName" placeholder="请输入新的显示名称">
+                        </div>
+                        <div class="btn-group">
+                            <button class="btn btn-primary" onclick="saveDisplayName()">确认修改</button>
+                            <button class="btn btn-secondary" onclick="cancelEditDisplayName()">取消</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 邮箱地址 -->
+                <div class="info-edit-item">
+                    <div class="info-display" id="emailDisplay">
+                        <span class="info-label">邮箱地址</span>
+                        <div class="info-value-group">
+                            <span class="info-value" id="currentEmail">加载中...</span>
+                            <button class="btn-edit" onclick="editEmail()">修改</button>
+                        </div>
+                    </div>
+                    <div class="info-edit hidden" id="emailEdit">
+                        <div class="form-group">
+                            <label for="newEmail">新邮箱地址</label>
+                            <input type="email" id="newEmail" placeholder="请输入新的邮箱地址">
+                        </div>
+                        <div class="form-group">
+                            <label for="passwordForEmail">当前密码</label>
+                            <input type="password" id="passwordForEmail" placeholder="请输入当前密码确认身份">
+                        </div>
+                        <div class="btn-group">
+                            <button class="btn btn-primary" onclick="saveEmail()">确认修改</button>
+                            <button class="btn btn-secondary" onclick="cancelEditEmail()">取消</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-item">
+                    <span class="info-label">用户ID</span>
+                    <span class="info-value" id="userId">加载中...</span>
+                </div>
+
+                <div class="info-item">
+                    <span class="info-label">注册时间</span>
+                    <span class="info-value" id="createdAt">加载中...</span>
+                </div>
+            </div>
+
+            <!-- 密码修改 -->
+            <div class="profile-section">
+                <h2 class="section-title">修改密码</h2>
+                <div id="passwordAlert"></div>
+                
+                <div class="form-group">
+                    <label for="currentPassword">当前密码</label>
+                    <input type="password" id="currentPassword" placeholder="请输入当前密码">
+                </div>
+
+                <div class="form-group">
+                    <label for="newPassword">新密码</label>
+                    <input type="password" id="newPassword" placeholder="请输入新密码（至少6位）">
+                </div>
+
+                <div class="form-group">
+                    <label for="confirmPassword">确认新密码</label>
+                    <input type="password" id="confirmPassword" placeholder="请再次输入新密码">
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="changePassword()">修改密码</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Include Environment Variables -->
+    <script src="js/env.js"></script>
+    <!-- Include Authentication Service -->
+    <script src="js/auth.js?v=20250825-6"></script>
+    <!-- Include API Service -->
+    <script src="js/api-service.js?v=20250825-6"></script>
+    <!-- Include Profile Logic -->
+    <script src="js/profile.js?v=20250827-2"></script>
+
+    <script>
+        // 页面初始化
+        document.addEventListener('DOMContentLoaded', async () => {
+            // 等待authService完全初始化
+            await new Promise(resolve => {
+                if (window.authService && window.authService.supabase) {
+                    // 如果已经初始化，等待一小段时间确保认证状态加载完成
+                    setTimeout(resolve, 200);
+                } else {
+                    // 如果还未初始化，等待初始化完成
+                    const checkInit = () => {
+                        if (window.authService && window.authService.supabase) {
+                            setTimeout(resolve, 200);
+                        } else {
+                            setTimeout(checkInit, 100);
+                        }
+                    };
+                    checkInit();
+                }
+            });
+
+            // 检查认证状态
+            console.log('🔍 Profile页面检查认证状态:', authService.isAuthenticated());
+            if (!authService.isAuthenticated()) {
+                console.log('❌ 未登录，重定向到登录页');
+                window.location.href = 'login.html';
+                return;
+            }
+
+            console.log('✅ 已登录，初始化个人资料页面');
+            // 初始化个人资料页面
+            if (window.profileManager) {
+                await window.profileManager.init();
+            }
+        });
+
+        function goBack() {
+            window.location.href = 'index.html';
+        }
+
+        function selectAvatar() {
+            document.getElementById('avatarInput').click();
+        }
+
+        async function handleAvatarChange(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (window.profileManager) {
+                await window.profileManager.uploadAvatar(file);
+            }
+        }
+
+        function editDisplayName() {
+            if (window.profileManager) {
+                window.profileManager.editDisplayName();
+            }
+        }
+
+        async function saveDisplayName() {
+            if (window.profileManager) {
+                await window.profileManager.saveDisplayName();
+            }
+        }
+
+        function cancelEditDisplayName() {
+            if (window.profileManager) {
+                window.profileManager.cancelEditDisplayName();
+            }
+        }
+
+        function editEmail() {
+            if (window.profileManager) {
+                window.profileManager.editEmail();
+            }
+        }
+
+        async function saveEmail() {
+            if (window.profileManager) {
+                await window.profileManager.saveEmail();
+            }
+        }
+
+        function cancelEditEmail() {
+            if (window.profileManager) {
+                window.profileManager.cancelEditEmail();
+            }
+        }
+
+        async function changePassword() {
+            if (window.profileManager) {
+                await window.profileManager.changePassword();
+            }
+        }
+    </script>
+</body>
+</html>

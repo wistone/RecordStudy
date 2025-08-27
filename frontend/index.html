@@ -484,25 +484,93 @@
                 });
             }, 100);
         });
+
+        // 监听页面可见性变化，当从个人资料页面返回时刷新用户信息
+        document.addEventListener('visibilitychange', async () => {
+            if (!document.hidden && authService.isAuthenticated()) {
+                console.log('🔄 页面重新可见，刷新用户信息');
+                await updateUserDisplay(authService.getCurrentUser());
+            }
+        });
         
-        function updateUserDisplay(user) {
-            const displayName = authService.getDisplayName();
-            const userEmail = user?.email || 'demo@example.com';
-            
-            // Update main user name
-            const userNameElement = document.querySelector('.user-name');
-            if (userNameElement && displayName) {
-                userNameElement.textContent = displayName;
-            }
-            
-            // Update dropdown menu info
-            const menuNameElement = document.querySelector('.user-menu-name');
-            const menuEmailElement = document.querySelector('.user-menu-email');
-            if (menuNameElement && displayName) {
-                menuNameElement.textContent = displayName;
-            }
-            if (menuEmailElement && userEmail) {
-                menuEmailElement.textContent = userEmail;
+        async function updateUserDisplay(user) {
+            try {
+                // 获取完整的用户资料信息
+                const profile = await window.apiService.request('/profiles/current', 'GET');
+                
+                if (profile && !profile.error) {
+                    const displayName = profile.display_name || authService.getDisplayName();
+                    const userEmail = profile.email || user?.email || 'demo@example.com';
+                    const avatarUrl = profile.avatar_url;
+                    
+                    // Update main user name
+                    const userNameElement = document.querySelector('.user-name');
+                    if (userNameElement && displayName) {
+                        userNameElement.textContent = displayName;
+                    }
+                    
+                    // Update main user avatar
+                    const userAvatarElement = document.querySelector('.user-avatar');
+                    if (userAvatarElement) {
+                        if (avatarUrl) {
+                            userAvatarElement.innerHTML = `<img src="${avatarUrl}" alt="头像" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">`;
+                        } else {
+                            userAvatarElement.innerHTML = '<span class="avatar-icon">👤</span>';
+                        }
+                    }
+                    
+                    // Update dropdown menu info
+                    const menuNameElement = document.querySelector('.user-menu-name');
+                    const menuEmailElement = document.querySelector('.user-menu-email');
+                    const menuAvatarElement = document.querySelector('.user-menu-avatar');
+                    
+                    if (menuNameElement && displayName) {
+                        menuNameElement.textContent = displayName;
+                    }
+                    if (menuEmailElement && userEmail) {
+                        menuEmailElement.textContent = userEmail;
+                    }
+                    if (menuAvatarElement) {
+                        if (avatarUrl) {
+                            menuAvatarElement.innerHTML = `<img src="${avatarUrl}" alt="头像" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">`;
+                        } else {
+                            menuAvatarElement.innerHTML = '<span class="avatar-icon">👤</span>';
+                        }
+                    }
+                    
+                    console.log('✅ 用户显示信息更新成功', { displayName, avatarUrl });
+                } else {
+                    // 如果获取资料失败，使用基础信息
+                    console.log('⚠️ 无法获取用户资料，使用基础信息');
+                    const displayName = authService.getDisplayName();
+                    const userEmail = user?.email || 'demo@example.com';
+                    
+                    // Update main user name
+                    const userNameElement = document.querySelector('.user-name');
+                    if (userNameElement && displayName) {
+                        userNameElement.textContent = displayName;
+                    }
+                    
+                    // Update dropdown menu info
+                    const menuNameElement = document.querySelector('.user-menu-name');
+                    const menuEmailElement = document.querySelector('.user-menu-email');
+                    if (menuNameElement && displayName) {
+                        menuNameElement.textContent = displayName;
+                    }
+                    if (menuEmailElement && userEmail) {
+                        menuEmailElement.textContent = userEmail;
+                    }
+                }
+            } catch (error) {
+                console.error('❌ 更新用户显示信息失败:', error);
+                // 出错时使用基础信息
+                const displayName = authService.getDisplayName();
+                const userEmail = user?.email || 'demo@example.com';
+                
+                const userNameElement = document.querySelector('.user-name');
+                if (userNameElement && displayName) {
+                    userNameElement.textContent = displayName;
+                }
             }
         }
         
@@ -543,8 +611,14 @@
         }
         
         function showProfile() {
-            alert('个人资料功能正在开发中...');
+            console.log('📍 点击个人资料菜单');
             toggleUserMenu(); // Close the menu
+            
+            // 延迟一点再跳转，确保菜单关闭动画不会干扰
+            setTimeout(() => {
+                console.log('🔄 跳转到个人资料页面');
+                window.location.href = 'profile.html';
+            }, 50);
         }
         
         function showSettings() {

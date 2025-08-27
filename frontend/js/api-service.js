@@ -263,6 +263,39 @@ class APIService {
         const results = await Promise.all(promises);
         return results;
     }
+
+    // 文件上传方法
+    async uploadFile(endpoint, formData) {
+        const url = `${this.baseURL}${endpoint}`;
+        
+        try {
+            // 获取认证token
+            const token = await this.getAuthToken();
+            
+            const config = {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                    // 不设置 Content-Type，让浏览器自动设置 multipart/form-data
+                },
+                body: formData
+            };
+
+            console.log(`📡 文件上传: ${url}`);
+            
+            const response = await fetch(url, config);
+            
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail || errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            return await response.json();
+        } catch (error) {
+            console.error(`❌ 文件上传失败: ${url}`, error);
+            throw error;
+        }
+    }
 }
 
 // 创建全局API服务实例

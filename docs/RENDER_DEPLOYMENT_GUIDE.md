@@ -108,7 +108,7 @@ git push -u origin main
 
 ### 检查前端应用
 1. 访问应用主页：`https://your-study-buddy.onrender.com`
-2. 测试用户登录：使用 `demo@example.com` / `abc123`
+2. 测试用户登录：使用 `demo@example.com` / `abc123123`
 3. 验证前后端通信正常（无 CORS 错误）
 4. 测试学习记录功能
 
