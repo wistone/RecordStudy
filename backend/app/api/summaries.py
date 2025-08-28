@@ -1,13 +1,43 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import Dict, List, Any, Optional
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, date, timezone
+import pytz
 from app.core.auth import get_current_user_id
 from supabase import create_client
 from app.core.config import settings
 import json
 
+# 用户时区设置（默认为中国时间，后续可以从用户配置中获取）
+USER_TIMEZONE = pytz.timezone('Asia/Shanghai')
+
+def utc_to_local_date(utc_datetime):
+    """将UTC时间转换为本地时区的日期"""
+    if utc_datetime.tzinfo is None:
+        utc_datetime = utc_datetime.replace(tzinfo=timezone.utc)
+    local_datetime = utc_datetime.astimezone(USER_TIMEZONE)
+    return local_datetime.date()
+
+def get_local_date_boundaries(days_back=0):
+    """获取本地时区的日期边界（开始时间和结束时间的UTC表示）"""
+    # 获取本地时间的今天
+    local_now = datetime.now(USER_TIMEZONE)
+    local_today = local_now.date()
+    
+    # 计算目标日期
+    target_date = local_today - timedelta(days=days_back)
+    
+    # 构建本地时间的开始和结束时间
+    local_start = USER_TIMEZONE.localize(datetime.combine(target_date, datetime.min.time()))
+    local_end = USER_TIMEZONE.localize(datetime.combine(local_today + timedelta(days=1), datetime.min.time()))
+    
+    # 转换为UTC时间用于数据库查询
+    utc_start = local_start.astimezone(timezone.utc)
+    utc_end = local_end.astimezone(timezone.utc)
+    
+    return utc_start, utc_end
+
 def safe_parse_datetime(datetime_str):
-    """安全解析日期字符串，处理各种格式问题"""
+    """安全解析日期字符串，返回UTC时间"""
     try:
         occurred_at = datetime_str
         # 处理不同的日期格式
@@ -77,13 +107,16 @@ async def get_dashboard_summary(
     
     try:
         client = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
-        start_date = datetime.now() - timedelta(days=days)
+        
+        # 使用本地时区计算日期边界
+        utc_start, utc_end = get_local_date_boundaries(days - 1)
         
         # 获取记录数据（只查询必要字段）
         response = client.table('records')\
             .select('occurred_at, duration_min, form_type, difficulty, focus')\
             .eq('user_id', current_user_id)\
-            .gte('occurred_at', start_date.isoformat())\
+            .gte('occurred_at', utc_start.isoformat())\
+            .lt('occurred_at', utc_end.isoformat())\
             .execute()
         
         records = response.data or []
@@ -92,13 +125,15 @@ async def get_dashboard_summary(
         total_records = len(records)
         total_duration = sum(r.get('duration_min', 0) or 0 for r in records)
         
-        # 计算学习天数（有记录的天数）
+        # 计算学习天数（有记录的天数）- 使用本地时区
         learning_dates = set()
         for record in records:
             if record.get('occurred_at'):
-                record_date = safe_parse_datetime(record['occurred_at'])
-                if record_date:
-                    learning_dates.add(record_date.date())
+                utc_datetime = safe_parse_datetime(record['occurred_at'])
+                if utc_datetime:
+                    # 转换为本地时区的日期
+                    local_date = utc_to_local_date(utc_datetime)
+                    learning_dates.add(local_date)
         
         learning_days = len(learning_dates)
         
@@ -127,9 +162,10 @@ async def get_dashboard_summary(
             for k, v in type_stats.items()
         ]
         
-        # 计算连续学习天数（更智能的逻辑）
+        # 计算连续学习天数（使用本地时区）
         streak_days = 0
-        today = date.today()
+        local_now = datetime.now(USER_TIMEZONE)
+        today = local_now.date()
         yesterday = today - timedelta(days=1)
         
         # 如果今天有记录，从今天开始计算连续天数
@@ -159,13 +195,15 @@ async def get_dashboard_summary(
                         streak_days += 1
                         check_date = check_date - timedelta(days=1)
         
-        # 今日统计
+        # 今日统计（使用本地时区）
         today_records = []
         for r in records:
             if r.get('occurred_at'):
-                record_date = safe_parse_datetime(r['occurred_at'])
-                if record_date and record_date.date() == today:
-                    today_records.append(r)
+                utc_datetime = safe_parse_datetime(r['occurred_at'])
+                if utc_datetime:
+                    local_date = utc_to_local_date(utc_datetime)
+                    if local_date == today:
+                        today_records.append(r)
         
         today_count = len(today_records)
         today_duration = sum(r.get('duration_min', 0) or 0 for r in today_records)
