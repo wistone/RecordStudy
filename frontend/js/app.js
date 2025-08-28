@@ -74,6 +74,52 @@ class LearningBuddyApp {
         }
     }
     
+    // Load all records for the records page (not just 20 recent)
+    async loadAllRecords() {
+        try {
+            this.showLoading(true);
+            
+            console.log('📡 正在加载完整记录列表...');
+            
+            // 分批加载所有记录（由于API限制每次最多100条）
+            let allRecords = [];
+            let skip = 0;
+            const batchSize = 100;
+            
+            while (true) {
+                const recordsData = await window.apiService.getRecords({
+                    skip: skip,
+                    limit: batchSize
+                });
+                
+                if (!recordsData?.records || recordsData.records.length === 0) {
+                    break; // 没有更多记录了
+                }
+                
+                allRecords = allRecords.concat(recordsData.records);
+                
+                // 如果返回的记录数少于批次大小，说明已经加载完所有记录
+                if (recordsData.records.length < batchSize) {
+                    break;
+                }
+                
+                skip += batchSize;
+            }
+            
+            // 转换记录格式
+            this.records = allRecords.map(record => this.convertRecentRecord(record));
+            
+            console.log('✅ 已加载完整记录列表:', this.records.length, '条记录');
+            
+        } catch (error) {
+            console.error('❌ 加载记录列表失败:', error);
+            this.showError('加载记录列表失败，请检查网络连接和后端服务');
+            this.records = [];
+        } finally {
+            this.showLoading(false);
+        }
+    }
+    
     // 转换最近记录格式（轻量版）
     convertRecentRecord(backendRecord) {
         const typeIcons = {
@@ -84,7 +130,8 @@ class LearningBuddyApp {
         const recordDate = new Date(backendRecord.occurred_at);
         
         return {
-            id: backendRecord.id,
+            id: backendRecord.record_id,  // 使用正确的record_id字段
+            record_id: backendRecord.record_id,  // 保持双重兼容性
             type: backendRecord.type,
             icon: typeIcons[backendRecord.type] || '📌',
             title: backendRecord.title,
@@ -112,6 +159,7 @@ class LearningBuddyApp {
         
         return {
             id: backendRecord.record_id,
+            record_id: backendRecord.record_id,  // 保留原始ID用于API调用
             type: backendRecord.form_type,
             icon: typeIcons[backendRecord.form_type] || '📌',
             title: backendRecord.title,
@@ -198,6 +246,10 @@ class LearningBuddyApp {
     }
 
     navigateTo(page) {
+        this.showPage(page);
+    }
+
+    showPage(page) {
         // Update active nav
         document.querySelectorAll('.nav-link').forEach(link => {
             link.classList.remove('active');
@@ -206,10 +258,13 @@ class LearningBuddyApp {
             }
         });
 
-        // Update active page
-        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        // Update active page - 使用display而不是class
+        document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
         const pageId = page === 'home' ? 'homePage' : `${page}Page`;
-        document.getElementById(pageId)?.classList.add('active');
+        const targetPage = document.getElementById(pageId);
+        if (targetPage) {
+            targetPage.style.display = 'block';
+        }
 
         this.currentPage = page;
 
@@ -220,7 +275,10 @@ class LearningBuddyApp {
             this.updateDashboard();
             this.renderRecentRecords();
         } else if (page === 'records') {
-            this.renderAllRecords();
+            // 为records页面加载完整的记录列表（不是仅最近20条）
+            this.loadAllRecords().then(() => {
+                this.renderAllRecords();
+            });
         } else if (page === 'analytics') {
             this.loadAnalyticsData();
         }
@@ -865,22 +923,34 @@ class LearningBuddyApp {
             container.className = 'records-list full';
         }
         
-        container.innerHTML = this.records.map(record => `
-            <div class="record-item">
-                <div class="record-type">${record.icon}</div>
-                <div class="record-content">
-                    <div class="record-title">${record.title}</div>
-                    <div class="record-meta">
-                        ${record.categories && record.categories.length > 0 && record.categories[0] !== '' 
-                            ? `<span class="record-tags">${record.categories.join(', ')}</span>` 
-                            : ''}
-                        <span>${record.date.toLocaleDateString('zh-CN')}</span>
-                        <span>${record.time || record.date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</span>
-                        <span class="record-duration">${record.duration}分钟</span>
+        container.innerHTML = this.records.map((record, index) => {
+            const recordId = record.record_id || record.id;
+            
+            return `
+                <div class="record-item">
+                    <div class="record-type">${record.icon}</div>
+                    <div class="record-content">
+                        <div class="record-title">${record.title}</div>
+                        <div class="record-meta">
+                            ${record.categories && record.categories.length > 0 && record.categories[0] !== '' 
+                                ? `<span class="record-tags">${record.categories.join(', ')}</span>` 
+                                : ''}
+                            <span>${record.date.toLocaleDateString('zh-CN')}</span>
+                            <span>${record.time || record.date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</span>
+                            <span class="record-duration">${record.duration}分钟</span>
+                        </div>
+                    </div>
+                    <div class="record-actions">
+                        <button class="btn-action btn-detail" onclick="app.viewRecordDetail(${recordId})" title="查看记录详情">
+                            📄 详情
+                        </button>
+                        <button class="btn-action btn-delete" onclick="app.confirmDeleteRecord(${recordId})" title="删除记录">
+                            🗑️删除
+                        </button>
                     </div>
                 </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
     }
 
     filterRecords() {
@@ -1290,6 +1360,565 @@ class LearningBuddyApp {
         } finally {
             this.showLoading(false);
         }
+    }
+
+    // 删除记录相关函数
+    confirmDeleteRecord(recordId) {
+        console.log('🗑️ 确认删除记录 ID:', recordId);
+        
+        const record = this.records.find(r => (r.record_id || r.id) == recordId);
+        if (!record) {
+            this.showError('找不到要删除的记录');
+            console.log('❌ 未找到记录，当前记录数组:', this.records);
+            return;
+        }
+
+        console.log('✅ 找到要删除的记录:', record);
+        
+        // 保存要删除的记录ID到实例变量
+        this.pendingDeleteRecordId = recordId;
+
+        // 创建确认弹框
+        const confirmModal = document.createElement('div');
+        confirmModal.className = 'delete-confirm-modal';
+        confirmModal.innerHTML = `
+            <div class="delete-confirm-overlay">
+                <div class="delete-confirm-content">
+                    <div class="delete-confirm-header">
+                        <h3>确认删除记录</h3>
+                    </div>
+                    <div class="delete-confirm-body">
+                        <p>确定要删除以下学习记录吗？</p>
+                        <div class="record-preview">
+                            <div class="record-preview-icon">${record.icon}</div>
+                            <div class="record-preview-info">
+                                <div class="record-preview-title">${record.title}</div>
+                                <div class="record-preview-meta">${record.date.toLocaleDateString('zh-CN')} • ${record.duration}分钟</div>
+                            </div>
+                        </div>
+                        <p class="delete-warning">⚠️ 此操作不可撤销</p>
+                    </div>
+                    <div class="delete-confirm-actions">
+                        <button class="btn btn-secondary" onclick="app.closeDeleteConfirm()">取消</button>
+                        <button class="btn-delete-confirm modal-delete-btn" onclick="app.executeDeleteRecord()">确认删除</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(confirmModal);
+        // 添加动画效果
+        setTimeout(() => confirmModal.classList.add('active'), 10);
+    }
+
+    closeDeleteConfirm() {
+        const modal = document.querySelector('.delete-confirm-modal');
+        if (modal) {
+            modal.classList.remove('active');
+            setTimeout(() => modal.remove(), 300);
+        }
+    }
+
+    // 执行删除记录（由确认弹框调用）
+    async executeDeleteRecord() {
+        const recordId = this.pendingDeleteRecordId;
+        if (!recordId) {
+            this.showError('删除操作异常：未找到待删除的记录ID');
+            return;
+        }
+
+        console.log('🗑️ 执行删除记录 ID:', recordId);
+        
+        try {
+            // 显示加载状态 - 选择弹框中的确认删除按钮
+            const deleteBtn = document.querySelector('.modal-delete-btn');
+            if (deleteBtn) {
+                deleteBtn.disabled = true;
+                deleteBtn.textContent = '删除中...';
+            }
+
+            // 调用后端API删除记录
+            try {
+                await window.apiService.deleteRecord(recordId);
+                console.log('✅ 删除API调用成功');
+            } catch (apiError) {
+                // 404错误表示记录已经不存在，对于删除操作这是成功的
+                if (apiError.message && apiError.message.includes('Record not found')) {
+                    console.log('✅ 记录已不存在，删除操作视为成功');
+                } else {
+                    throw apiError; // 其他错误重新抛出
+                }
+            }
+
+            // 刷新完整记录列表（确保显示最新数据）
+            if (this.currentPage === 'records') {
+                await this.loadAllRecords();
+                this.renderAllRecords();
+            } else {
+                // 从本地数组中移除记录（仅用于首页）
+                this.records = this.records.filter(r => (r.record_id || r.id) != recordId);
+                this.renderRecentRecords();
+            }
+
+            // 更新仪表板
+            this.updateDashboard();
+
+            // 关闭弹框并显示成功消息
+            this.closeDeleteConfirm();
+            this.showSuccessMessage('记录删除成功！');
+
+            // 如果当前在详情页，则跳转回记录列表页
+            const recordDetailPage = document.getElementById('recordDetailPage');
+            if (recordDetailPage && recordDetailPage.style.display === 'block') {
+                console.log('📄 当前在详情页，删除成功后自动返回记录列表');
+                this.navigateTo('records');
+            }
+
+            // 清空待删除记录ID
+            this.pendingDeleteRecordId = null;
+
+        } catch (error) {
+            console.error('❌ 删除记录失败:', error);
+            this.showError('删除失败: ' + window.apiService.formatError(error));
+            
+            // 恢复按钮状态 - 选择弹框中的确认删除按钮
+            const deleteBtn = document.querySelector('.modal-delete-btn');
+            if (deleteBtn) {
+                deleteBtn.disabled = false;
+                deleteBtn.textContent = '确认删除';
+            }
+        }
+    }
+
+    // 保持向后兼容的deleteRecord函数
+    async deleteRecord(recordId) {
+        this.pendingDeleteRecordId = recordId;
+        await this.executeDeleteRecord();
+    }
+
+    // 查看记录详情函数
+    async viewRecordDetail(recordId) {
+        try {
+            // 显示加载状态
+            this.showLoading(true);
+
+            // 从后端获取完整的记录详情
+            const recordDetail = await window.apiService.getRecord(recordId);
+            
+            // 显示记录详情页面
+            this.showRecordDetailPage(recordDetail);
+
+        } catch (error) {
+            console.error('❌ 获取记录详情失败:', error);
+            this.showError('获取记录详情失败: ' + window.apiService.formatError(error));
+        } finally {
+            this.showLoading(false);
+        }
+    }
+
+    // 显示记录详情页面
+    showRecordDetailPage(recordDetail) {
+        // 保存当前记录ID和数据
+        this.currentRecordId = recordDetail.record_id;
+        this.currentRecordDetail = recordDetail;
+        this.isEditMode = false;
+
+        // 隐藏所有页面
+        document.querySelectorAll('.page').forEach(page => page.style.display = 'none');
+        
+        // 显示记录详情页面
+        document.getElementById('recordDetailPage').style.display = 'block';
+        
+        // 更新导航状态 - 不激活任何导航链接，因为这是详情页
+        document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+        
+        // 填充数据
+        this.populateRecordDetail(recordDetail);
+        
+        console.log('📄 显示记录详情:', recordDetail);
+    }
+
+    // 填充记录详情数据
+    populateRecordDetail(data) {
+        // 页面标题
+        document.getElementById('recordDetailTitle').textContent = `记录详情 - ${data.title}`;
+        
+        // 基础信息
+        document.getElementById('recordDetailTitleField').value = data.title || '';
+        document.getElementById('recordDetailFormType').value = data.form_type || '';
+        
+        // 格式化时间为datetime-local格式
+        if (data.occurred_at) {
+            const date = new Date(data.occurred_at);
+            // 获取本地时间的年月日时分，不进行时区转换
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            const formattedDate = `${year}-${month}-${day}T${hours}:${minutes}`;
+            document.getElementById('recordDetailOccurredAt').value = formattedDate;
+        }
+        
+        // 时长信息
+        document.getElementById('recordDetailDuration').value = data.duration_min || '';
+        
+        // 学习体验评分
+        this.setRatingDisplay('recordDetailDifficulty', data.difficulty || 0);
+        this.setRatingDisplay('recordDetailFocus', data.focus || 0);
+        this.setRatingDisplay('recordDetailEnergy', data.energy || 0);
+        
+        // 心情和笔记
+        document.getElementById('recordDetailMood').value = data.mood || '';
+        document.getElementById('recordDetailBodyMd').value = data.body_md || '';
+        
+        // 资源信息
+        if (data.resource) {
+            document.getElementById('resourceSection').style.display = 'block';
+            document.getElementById('resourceDetailTitle').value = data.resource.title || '';
+            document.getElementById('resourceDetailType').value = data.resource.type || '';
+            document.getElementById('resourceDetailAuthor').value = data.resource.author || '';
+            document.getElementById('resourceDetailUrl').value = data.resource.url || '';
+            document.getElementById('resourceDetailPlatform').value = data.resource.platform || '';
+            document.getElementById('resourceDetailIsbn').value = data.resource.isbn || '';
+            document.getElementById('resourceDetailDescription').value = data.resource.description || '';
+            
+        } else {
+            document.getElementById('resourceSection').style.display = 'none';
+        }
+        
+        // 用户资源关系
+        if (data.user_resource) {
+            document.getElementById('userResourceSection').style.display = 'block';
+            document.getElementById('userResourceStatus').value = data.user_resource.status || '';
+            this.setRatingDisplay('userResourceRating', data.user_resource.rating || 0);
+            document.getElementById('userResourceReview').value = data.user_resource.review_short || '';
+            document.getElementById('userResourceFavorite').checked = data.user_resource.is_favorite || false;
+            document.getElementById('userResourceTotalDuration').textContent = 
+                `${data.user_resource.total_duration_min || 0} 分钟`;
+        } else {
+            document.getElementById('userResourceSection').style.display = 'none';
+        }
+        
+        // 标签信息
+        this.displayTags(data.tags || []);
+        
+        // 附件资源
+        if (data.assets && data.assets.length > 0) {
+            document.getElementById('assetsSection').style.display = 'block';
+            this.displayAssets(data.assets);
+        } else {
+            document.getElementById('assetsSection').style.display = 'none';
+        }
+        
+        // 重置为查看模式
+        this.setEditMode(false);
+        
+        // 确保删除按钮的初始状态是正确的
+        const deleteBtn = document.getElementById('deleteRecordBtn');
+        if (deleteBtn) {
+            deleteBtn.disabled = false;
+            deleteBtn.textContent = '删除记录';
+        }
+    }
+
+    // 设置星级评分显示
+    setRatingDisplay(elementId, rating) {
+        const ratingElement = document.getElementById(elementId);
+        const stars = ratingElement.querySelectorAll('.star');
+        
+        stars.forEach((star, index) => {
+            if (index < rating) {
+                star.classList.add('filled');
+                star.textContent = '★';
+            } else {
+                star.classList.remove('filled');
+                star.textContent = '☆';
+            }
+        });
+    }
+
+
+    // 显示标签
+    displayTags(tags) {
+        const tagsContainer = document.getElementById('recordDetailTags');
+        if (tags.length === 0) {
+            tagsContainer.innerHTML = '<span class="no-tags">暂无标签</span>';
+            return;
+        }
+        
+        tagsContainer.innerHTML = tags.map(tag => `
+            <div class="tag-item">
+                <span>${tag.tag_name}</span>
+                <span class="tag-remove" onclick="app.removeTag('${tag.tag_id}')" style="display: ${this.isEditMode ? 'inline' : 'none'};">×</span>
+            </div>
+        `).join('');
+    }
+
+    // 显示附件资源
+    displayAssets(assets) {
+        const assetsContainer = document.getElementById('recordDetailAssets');
+        
+        if (!Array.isArray(assets)) {
+            try {
+                assets = JSON.parse(assets);
+            } catch (e) {
+                console.log('Assets not in JSON format, treating as empty array');
+                assets = [];
+            }
+        }
+        
+        if (assets.length === 0) {
+            assetsContainer.innerHTML = '<span class="no-assets">暂无附件</span>';
+            return;
+        }
+        
+        assetsContainer.innerHTML = assets.map(asset => {
+            const icon = asset.type === 'image' ? '🖼️' : 
+                        asset.type === 'audio' ? '🎵' : '📄';
+            return `
+                <div class="asset-item">
+                    <div class="asset-icon">${icon}</div>
+                    <div class="asset-info">
+                        <div class="asset-name">${asset.url.split('/').pop() || 'Unnamed file'}</div>
+                        <div class="asset-type">${asset.type}</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // 切换编辑模式
+    toggleEditMode() {
+        this.setEditMode(!this.isEditMode);
+    }
+
+    // 设置编辑模式
+    setEditMode(isEdit) {
+        this.isEditMode = isEdit;
+        
+        // 显示/隐藏编辑按钮（编辑模式时隐藏编辑按钮）
+        const editBtn = document.getElementById('editModeBtn');
+        editBtn.style.display = isEdit ? 'none' : 'inline-block';
+        
+        // 更新表单字段的可编辑状态
+        const readonlyFields = [
+            'recordDetailTitleField', 'recordDetailOccurredAt', 'recordDetailDuration',
+            'recordDetailMood', 'recordDetailBodyMd',
+            'resourceDetailTitle', 'resourceDetailAuthor', 'resourceDetailUrl',
+            'resourceDetailPlatform', 'resourceDetailIsbn', 'resourceDetailDescription',
+            'userResourceReview'
+        ];
+        
+        const disabledFields = [
+            'recordDetailFormType', 'resourceDetailType', 'userResourceStatus'
+        ];
+        
+        readonlyFields.forEach(fieldId => {
+            const field = document.getElementById(fieldId);
+            if (field) field.readOnly = !isEdit;
+        });
+        
+        disabledFields.forEach(fieldId => {
+            const field = document.getElementById(fieldId);
+            if (field) field.disabled = !isEdit;
+        });
+        
+        // 更新复选框
+        const favoriteField = document.getElementById('userResourceFavorite');
+        if (favoriteField) favoriteField.disabled = !isEdit;
+        
+        // 更新评分显示
+        const ratingDisplays = ['recordDetailDifficulty', 'recordDetailFocus', 
+                               'recordDetailEnergy', 'userResourceRating'];
+        ratingDisplays.forEach(ratingId => {
+            const ratingElement = document.getElementById(ratingId);
+            if (ratingElement) {
+                if (isEdit) {
+                    ratingElement.classList.add('interactive');
+                    this.setupRatingInteraction(ratingId);
+                } else {
+                    ratingElement.classList.remove('interactive');
+                }
+            }
+        });
+        
+        // 显示/隐藏标签编辑器
+        const tagEditor = document.getElementById('tagEditor');
+        if (tagEditor) tagEditor.style.display = isEdit ? 'flex' : 'none';
+        
+        // 显示/隐藏标签删除按钮
+        document.querySelectorAll('.tag-remove').forEach(btn => {
+            btn.style.display = isEdit ? 'inline' : 'none';
+        });
+        
+        // 显示/隐藏编辑相关按钮
+        document.getElementById('cancelEditBtn').style.display = isEdit ? 'inline-block' : 'none';
+        document.getElementById('saveDetailBtn').style.display = isEdit ? 'inline-block' : 'none';
+    }
+
+    // 设置评分交互
+    setupRatingInteraction(ratingId) {
+        const ratingElement = document.getElementById(ratingId);
+        const stars = ratingElement.querySelectorAll('.star');
+        
+        stars.forEach((star, index) => {
+            star.onclick = () => {
+                const rating = index + 1;
+                this.setRatingDisplay(ratingId, rating);
+            };
+        });
+    }
+
+    // 取消编辑
+    cancelEdit() {
+        // 重新填充原始数据
+        this.populateRecordDetail(this.currentRecordDetail);
+    }
+
+    // 保存记录详情
+    async saveRecordDetail() {
+        try {
+            // 显示保存状态
+            const saveBtn = document.getElementById('saveDetailBtn');
+            saveBtn.disabled = true;
+            saveBtn.textContent = '保存中...';
+
+            // 收集表单数据
+            const updateData = this.collectRecordDetailData();
+            
+            // 调用API更新记录
+            const updatedRecord = await window.apiService.updateRecord(this.currentRecordId, updateData);
+            
+            // 更新本地数据
+            this.currentRecordDetail = { ...this.currentRecordDetail, ...updatedRecord };
+            
+            // 刷新记录列表
+            this.loadData();
+            if (this.currentPage === 'records') {
+                this.renderAllRecords();
+            }
+            
+            // 退出编辑模式
+            this.setEditMode(false);
+            
+            this.showSuccessMessage('记录更新成功！');
+
+        } catch (error) {
+            console.error('❌ 保存记录详情失败:', error);
+            this.showError('保存失败: ' + window.apiService.formatError(error));
+        } finally {
+            // 恢复按钮状态
+            const saveBtn = document.getElementById('saveDetailBtn');
+            saveBtn.disabled = false;
+            saveBtn.textContent = '保存修改';
+        }
+    }
+
+    // 收集记录详情数据
+    collectRecordDetailData() {
+        // 处理时间格式 - 将datetime-local格式转换为ISO格式
+        const occurredAtValue = document.getElementById('recordDetailOccurredAt').value;
+        let occurredAtISO = null;
+        if (occurredAtValue) {
+            // datetime-local返回的格式是 "YYYY-MM-DDTHH:MM"
+            // 我们需要将它转换为完整的ISO格式
+            const localDate = new Date(occurredAtValue);
+            occurredAtISO = localDate.toISOString();
+        }
+        
+        const data = {
+            // 记录基本信息
+            title: document.getElementById('recordDetailTitleField').value,
+            form_type: document.getElementById('recordDetailFormType').value,
+            occurred_at: occurredAtISO,
+            duration_min: parseInt(document.getElementById('recordDetailDuration').value) || null,
+            difficulty: this.getRatingValue('recordDetailDifficulty'),
+            focus: this.getRatingValue('recordDetailFocus'),
+            energy: this.getRatingValue('recordDetailEnergy'),
+            mood: document.getElementById('recordDetailMood').value,
+            body_md: document.getElementById('recordDetailBodyMd').value
+        };
+        
+        // 资源信息（如果存在资源部分）
+        const resourceSection = document.getElementById('resourceSection');
+        if (resourceSection && resourceSection.style.display !== 'none') {
+            data.resource_title = document.getElementById('resourceDetailTitle').value || null;
+            data.resource_type = document.getElementById('resourceDetailType').value || null;
+            data.resource_author = document.getElementById('resourceDetailAuthor').value || null;
+            data.resource_url = document.getElementById('resourceDetailUrl').value || null;
+            data.resource_platform = document.getElementById('resourceDetailPlatform').value || null;
+            // 特别处理ISBN - 空字符串转换为null以避免唯一约束冲突
+            data.resource_isbn = document.getElementById('resourceDetailIsbn').value.trim() || null;
+            data.resource_description = document.getElementById('resourceDetailDescription').value || null;
+        }
+        
+        // 标签信息
+        if (this.currentRecordDetail && this.currentRecordDetail.tags) {
+            data.tags = this.currentRecordDetail.tags;
+        }
+        
+        return data;
+    }
+
+    // 获取评分值
+    getRatingValue(elementId) {
+        const ratingElement = document.getElementById(elementId);
+        const filledStars = ratingElement.querySelectorAll('.star.filled');
+        const rating = filledStars.length;
+        // 返回null而不是0，因为数据库约束要求评分值在1-5之间或为null
+        return rating > 0 ? rating : null;
+    }
+
+    // 标签管理功能
+    addTag() {
+        const tagInput = document.getElementById('newTagInput');
+        const tagName = tagInput.value.trim();
+        
+        if (!tagName) {
+            this.showError('请输入标签名称');
+            return;
+        }
+        
+        // 检查是否已存在相同标签
+        const existingTags = this.currentRecordDetail.tags || [];
+        if (existingTags.some(tag => tag.tag_name === tagName)) {
+            this.showError('标签已存在');
+            return;
+        }
+        
+        // 创建新标签对象（临时ID）
+        const newTag = {
+            tag_id: `temp_${Date.now()}`,
+            tag_name: tagName,
+            tag_type: 'category',
+            created_by: null, // 将在保存时处理
+            is_new: true
+        };
+        
+        // 添加到当前数据
+        this.currentRecordDetail.tags = this.currentRecordDetail.tags || [];
+        this.currentRecordDetail.tags.push(newTag);
+        
+        // 更新显示
+        this.displayTags(this.currentRecordDetail.tags);
+        
+        // 清空输入框
+        tagInput.value = '';
+        
+        console.log('📝 添加标签:', newTag);
+    }
+
+    removeTag(tagId) {
+        if (!this.currentRecordDetail.tags) return;
+        
+        // 从数据中移除标签
+        this.currentRecordDetail.tags = this.currentRecordDetail.tags.filter(tag => tag.tag_id != tagId);
+        
+        // 更新显示
+        this.displayTags(this.currentRecordDetail.tags);
+        
+        console.log('🗑️ 删除标签:', tagId);
     }
 }
 

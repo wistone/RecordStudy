@@ -51,10 +51,30 @@ class APIService {
                 throw new Error(errorData.detail || `HTTP ${response.status}: ${response.statusText}`);
             }
 
-            const data = await response.json();
-            console.log(`✅ API响应: ${url}`, data);
+            // 处理空响应（204 No Content 或空响应体）
+            if (response.status === 204) {
+                console.log(`✅ API响应: ${url} - No Content`);
+                return null;
+            }
             
-            return data;
+            // 检查响应是否有内容
+            const contentLength = response.headers.get('content-length');
+            const contentType = response.headers.get('content-type');
+            
+            if (contentLength === '0' || (!contentType || !contentType.includes('application/json'))) {
+                console.log(`✅ API响应: ${url} - Empty response`);
+                return null;
+            }
+
+            try {
+                const data = await response.json();
+                console.log(`✅ API响应: ${url}`, data);
+                return data;
+            } catch (jsonError) {
+                // 如果JSON解析失败，可能是空响应
+                console.log(`✅ API响应: ${url} - Response parsing failed, treating as success`);
+                return null;
+            }
         } catch (error) {
             console.error(`❌ API请求失败: ${url}`, error);
             throw error;

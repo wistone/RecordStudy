@@ -386,22 +386,59 @@ async def get_record(
     record_id: int,
     current_user_id: str = Depends(get_current_user_id)
 ):
-    """获取特定的学习记录"""
+    """获取特定的学习记录及其完整详情"""
     try:
         from supabase import create_client
         from app.core.config import settings
         
         client = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
         
-        response = client.table('records').select('*').eq('record_id', record_id).eq('user_id', current_user_id).execute()
+        # 1. 获取记录基本信息
+        record_response = client.table('records').select('*').eq('record_id', record_id).eq('user_id', current_user_id).execute()
         
-        if not response.data:
+        if not record_response.data:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Record not found"
             )
         
-        return response.data[0]
+        record = record_response.data[0]
+        result = dict(record)
+        
+        # 2. 获取关联的资源信息
+        resource_info = None
+        if record.get('resource_id'):
+            resource_response = client.table('resources').select('*').eq('resource_id', record['resource_id']).execute()
+            if resource_response.data:
+                resource_info = resource_response.data[0]
+        result['resource'] = resource_info
+        
+        # 3. 获取用户-资源关系信息
+        user_resource_info = None
+        if record.get('resource_id'):
+            user_resource_response = client.table('user_resources').select('*').eq('user_id', current_user_id).eq('resource_id', record['resource_id']).execute()
+            if user_resource_response.data:
+                user_resource_info = user_resource_response.data[0]
+        result['user_resource'] = user_resource_info
+        
+        # 4. 获取标签信息
+        tags_info = []
+        if record.get('resource_id'):
+            # 获取资源标签关联
+            resource_tags_response = client.table('resource_tags').select('tag_id').eq('user_id', current_user_id).eq('resource_id', record['resource_id']).execute()
+            
+            if resource_tags_response.data:
+                tag_ids = [rt['tag_id'] for rt in resource_tags_response.data]
+                
+                # 获取标签详细信息
+                if tag_ids:
+                    tags_response = client.table('tags').select('*').in_('tag_id', tag_ids).execute()
+                    if tags_response.data:
+                        tags_info = tags_response.data
+        
+        result['tags'] = tags_info
+        
+        return result
         
     except Exception as e:
         if isinstance(e, HTTPException):
@@ -414,18 +451,18 @@ async def get_record(
 @router.put("/{record_id}", response_model=dict)
 async def update_record(
     record_id: int,
-    record_update: RecordUpdate,
+    record_update: dict,
     current_user_id: str = Depends(get_current_user_id)
 ):
-    """更新学习记录"""
+    """更新学习记录及其相关资源、标签信息"""
     try:
         from supabase import create_client
         from app.core.config import settings
         
         client = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
         
-        # 首先检查记录是否存在
-        check_response = client.table('records').select('record_id').eq('record_id', record_id).eq('user_id', current_user_id).execute()
+        # 首先检查记录是否存在并获取当前数据
+        check_response = client.table('records').select('*').eq('record_id', record_id).eq('user_id', current_user_id).execute()
         
         if not check_response.data:
             raise HTTPException(
@@ -433,30 +470,145 @@ async def update_record(
                 detail="Record not found"
             )
         
-        # 更新非空字段
-        update_data = record_update.dict(exclude_unset=True)
-        if update_data:
-            response = client.table('records').update(update_data).eq('record_id', record_id).eq('user_id', current_user_id).execute()
+        current_record = check_response.data[0]
+        
+        # 分离记录数据和资源数据
+        record_fields = {
+            'title', 'form_type', 'body_md', 'occurred_at', 'duration_min', 
+            'effective_duration_min', 'mood', 'difficulty', 'focus', 'energy',
+            'privacy', 'auto_confidence', 'assets'
+        }
+        
+        resource_fields = {
+            'resource_title', 'resource_type', 'resource_author', 'resource_url',
+            'resource_platform', 'resource_isbn', 'resource_description', 'resource_cover_url'
+        }
+        
+        # 更新记录数据
+        record_update_data = {k: v for k, v in record_update.items() if k in record_fields}
+        if record_update_data:
+            response = client.table('records').update(record_update_data).eq('record_id', record_id).eq('user_id', current_user_id).execute()
             
-            if response.data:
-                return response.data[0]
-            else:
+            if not response.data:
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                     detail="Failed to update record"
                 )
-        else:
-            # 返回原记录
-            get_response = client.table('records').select('*').eq('record_id', record_id).eq('user_id', current_user_id).execute()
-            return get_response.data[0]
+        
+        # 更新资源数据（如果存在资源）
+        resource_update_data = {}
+        for k, v in record_update.items():
+            if k.startswith('resource_'):
+                field_name = k.replace('resource_', '')
+                if field_name == 'cover_url':
+                    field_name = 'cover_url'
+                elif field_name == 'title':
+                    field_name = 'title'  
+                elif field_name == 'type':
+                    field_name = 'type'
+                elif field_name == 'author':
+                    field_name = 'author'
+                elif field_name == 'url':
+                    field_name = 'url'
+                elif field_name == 'platform':
+                    field_name = 'platform'
+                elif field_name == 'isbn':
+                    field_name = 'isbn'
+                elif field_name == 'description':
+                    field_name = 'description'
+                resource_update_data[field_name] = v
+        
+        if resource_update_data and current_record.get('resource_id'):
+            resource_response = client.table('resources').update(resource_update_data).eq('resource_id', current_record['resource_id']).execute()
+            
+            if not resource_response.data:
+                print(f"警告: 资源更新可能失败，resource_id: {current_record['resource_id']}")
+        
+        # 处理标签更新（如果有标签数据）
+        if 'tags' in record_update:
+            await update_record_tags(client, current_record['resource_id'], record_update['tags'], current_user_id)
+        
+        # 返回更新后的完整记录
+        return await get_full_record_detail(client, record_id, current_user_id)
         
     except Exception as e:
         if isinstance(e, HTTPException):
             raise e
+        print(f"更新记录失败: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to update record: {str(e)}"
         )
+
+# 辅助函数
+async def get_full_record_detail(client, record_id: int, user_id: str):
+    """获取完整的记录详情"""
+    # 重用现有的get_record逻辑
+    record_response = client.table('records').select('*').eq('record_id', record_id).eq('user_id', user_id).execute()
+    
+    if not record_response.data:
+        return None
+    
+    record = record_response.data[0]
+    result = dict(record)
+    
+    # 获取关联的资源信息
+    resource_info = None
+    if record.get('resource_id'):
+        resource_response = client.table('resources').select('*').eq('resource_id', record['resource_id']).execute()
+        if resource_response.data:
+            resource_info = resource_response.data[0]
+    result['resource'] = resource_info
+    
+    # 获取用户-资源关系信息
+    user_resource_info = None
+    if record.get('resource_id'):
+        user_resource_response = client.table('user_resources').select('*').eq('user_id', user_id).eq('resource_id', record['resource_id']).execute()
+        if user_resource_response.data:
+            user_resource_info = user_resource_response.data[0]
+    result['user_resource'] = user_resource_info
+    
+    # 获取标签信息
+    tags_info = []
+    if record.get('resource_id'):
+        resource_tags_response = client.table('resource_tags').select('tag_id').eq('user_id', user_id).eq('resource_id', record['resource_id']).execute()
+        
+        if resource_tags_response.data:
+            tag_ids = [rt['tag_id'] for rt in resource_tags_response.data]
+            
+            if tag_ids:
+                tags_response = client.table('tags').select('*').in_('tag_id', tag_ids).execute()
+                if tags_response.data:
+                    tags_info = tags_response.data
+    
+    result['tags'] = tags_info
+    
+    return result
+
+async def update_record_tags(client, resource_id: int, tags_data: list, user_id: str):
+    """更新记录的标签"""
+    if not resource_id:
+        return
+        
+    try:
+        # 删除现有的资源标签关联
+        client.table('resource_tags').delete().eq('user_id', user_id).eq('resource_id', resource_id).execute()
+        
+        # 添加新的标签关联
+        for tag_data in tags_data:
+            tag_name = tag_data.get('tag_name')
+            if not tag_name:
+                continue
+                
+            # 创建或查找标签
+            tag_id = await create_or_find_tag(client, tag_name, user_id)
+            
+            # 创建资源-标签关系
+            await create_resource_tag_relation(client, user_id, resource_id, tag_id)
+            
+    except Exception as e:
+        print(f"更新标签失败: {e}")
+        # 不抛出异常，因为标签更新失败不应该影响记录更新
 
 @router.delete("/{record_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_record(
@@ -482,7 +634,9 @@ async def delete_record(
         # 删除记录
         response = client.table('records').delete().eq('record_id', record_id).eq('user_id', current_user_id).execute()
         
-        # 204 No Content - 无需返回数据
+        # 返回空响应 (204 No Content)
+        from fastapi import Response
+        return Response(status_code=204)
         
     except Exception as e:
         if isinstance(e, HTTPException):
