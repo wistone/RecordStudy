@@ -173,6 +173,12 @@ class LearningBuddyApp {
         
         // 处理标签数据 - 统一处理各种可能的标签字段
         let categories = [];
+        console.log('🔍 convertBackendRecord 处理标签:', {
+            tags: backendRecord.tags,
+            tag_names: backendRecord.tag_names,
+            categories: backendRecord.categories
+        });
+        
         if (backendRecord.tags && Array.isArray(backendRecord.tags)) {
             categories = backendRecord.tags.map(tag => tag.tag_name || tag.name || tag).filter(Boolean);
         } else if (backendRecord.tag_names && Array.isArray(backendRecord.tag_names)) {
@@ -182,6 +188,8 @@ class LearningBuddyApp {
         } else if (backendRecord.categories && Array.isArray(backendRecord.categories)) {
             categories = backendRecord.categories.filter(Boolean);
         }
+        
+        console.log('🏷️ 转换后的标签:', categories);
 
         return {
             id: backendRecord.record_id,
@@ -323,9 +331,15 @@ class LearningBuddyApp {
             this.renderRecentRecords();
         } else if (page === 'records') {
             // 为records页面加载完整的记录列表（不是仅最近20条）
-            this.loadAllRecords().then(() => {
+            // 如果数据最近刚更新过，直接渲染不重新加载
+            if (this.lastRecordUpdate && (Date.now() - this.lastRecordUpdate < 5000)) {
+                console.log('🔄 使用最近更新的记录数据，无需重新加载');
                 this.renderAllRecords();
-            });
+            } else {
+                this.loadAllRecords().then(() => {
+                    this.renderAllRecords();
+                });
+            }
         } else if (page === 'analytics') {
             this.loadAnalyticsData();
         }
@@ -335,11 +349,32 @@ class LearningBuddyApp {
         document.getElementById('quickRecordModal').classList.add('active');
         this.currentStep = 1;
         this.showStep(1);
+        
+        // 重新绑定标签建议事件（确保模态框显示后绑定）
+        setTimeout(() => {
+            this.bindTagSuggestionEvents();
+        }, 100);
     }
 
     closeQuickRecord() {
         document.getElementById('quickRecordModal').classList.remove('active');
         this.resetForm();
+    }
+    
+    bindTagSuggestionEvents() {
+        // 重新绑定标签建议点击事件
+        document.querySelectorAll('.tag-suggestion').forEach(tag => {
+            // 移除之前的事件监听器（如果有）
+            tag.replaceWith(tag.cloneNode(true));
+        });
+        
+        // 重新绑定事件
+        document.querySelectorAll('.tag-suggestion').forEach(tag => {
+            tag.addEventListener('click', (e) => {
+                console.log('点击标签建议:', e.target.textContent);
+                this.addTag(e.target.textContent);
+            });
+        });
     }
 
     switchRecordTab(tab) {
@@ -401,7 +436,10 @@ class LearningBuddyApp {
 
     renderTags() {
         const container = document.getElementById('selectedTags');
-        container.innerHTML = this.recordData.tags.map(tag => `
+        if (!container) return;
+        
+        const tags = this.recordData.tags || [];
+        container.innerHTML = tags.map(tag => `
             <span class="tag">
                 ${tag}
                 <span class="tag-remove" onclick="app.removeTag('${tag}')">×</span>
@@ -410,6 +448,9 @@ class LearningBuddyApp {
     }
 
     removeTag(tagName) {
+        if (!this.recordData.tags) {
+            this.recordData.tags = [];
+        }
         this.recordData.tags = this.recordData.tags.filter(t => t !== tagName);
         this.renderTags();
     }
@@ -538,6 +579,8 @@ class LearningBuddyApp {
         // 重置提交状态
         this.isSubmitting = false;
         this.setSubmitButtonState(false);
+        // 清空标签显示
+        this.renderTags();
     }
 
     showSuccessMessage(message = '记录保存成功！') {
@@ -1860,15 +1903,53 @@ class LearningBuddyApp {
             
             // 调用API更新记录
             const updatedRecord = await window.apiService.updateRecord(this.currentRecordId, updateData);
+            console.log('🔍 API返回的完整更新数据:', updatedRecord);
             
             // 更新本地数据
             this.currentRecordDetail = { ...this.currentRecordDetail, ...updatedRecord };
             
-            // 刷新记录列表
-            this.loadData();
-            if (this.currentPage === 'records') {
-                this.renderAllRecords();
+            // 同时更新记录列表中的对应记录
+            const recordIndex = this.records.findIndex(r => (r.record_id || r.id) == this.currentRecordId);
+            if (recordIndex !== -1) {
+                // 重新转换更新后的记录数据以确保格式一致
+                // 如果后端返回的标签为空，但我们知道刚添加了标签，使用当前详情数据中的标签
+                const updatedRecordWithTags = { ...updatedRecord };
+                if ((!updatedRecord.tags || updatedRecord.tags.length === 0) && 
+                    this.currentRecordDetail.tags && this.currentRecordDetail.tags.length > 0) {
+                    console.log('🔧 后端返回空标签，使用本地标签数据');
+                    updatedRecordWithTags.tags = this.currentRecordDetail.tags.map(tag => tag.tag_name || tag);
+                }
+                
+                // 合并当前记录的基础数据和更新的数据
+                const fullUpdatedRecord = {
+                    ...this.records[recordIndex], // 保持现有的转换后数据
+                    ...updatedRecordWithTags,
+                    record_id: this.currentRecordId
+                };
+                console.log('🔄 更新记录数据:', { fullUpdatedRecord, original: this.records[recordIndex] });
+                const updatedRecordForList = this.convertBackendRecord(fullUpdatedRecord);
+                console.log('✅ 转换后的记录数据:', updatedRecordForList);
+                this.records[recordIndex] = updatedRecordForList;
+                
+                // 标记记录数据已更新
+                this.lastRecordUpdate = Date.now();
+                
+                // 如果在记录页面，立即重新渲染列表
+                if (this.currentPage === 'records') {
+                    this.renderAllRecords();
+                }
             }
+            
+            // 仅刷新汇总数据，不重新加载记录列表（避免覆盖已更新的本地数据）
+            Promise.allSettled([
+                window.apiService.getDashboardSummary(7),
+                window.apiService.getDashboardSummary(30)
+            ]).then(([weekResult, monthResult]) => {
+                this.weekSummary = weekResult.status === 'fulfilled' ? weekResult.value : null;
+                this.monthSummary = monthResult.status === 'fulfilled' ? monthResult.value : null;
+                this.dashboardSummary = this.weekSummary || this.monthSummary;
+                this.updateDashboard();
+            });
             
             // 退出编辑模式
             this.setEditMode(false);
@@ -1942,7 +2023,7 @@ class LearningBuddyApp {
     }
 
     // 标签管理功能
-    addTag() {
+    addTagToRecord() {
         const tagInput = document.getElementById('newTagInput');
         const tagName = tagInput.value.trim();
         

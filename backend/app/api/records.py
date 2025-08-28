@@ -526,7 +526,7 @@ async def update_record(
         
         # 处理标签更新（如果有标签数据）
         if 'tags' in record_update:
-            await update_record_tags(client, current_record['resource_id'], record_update['tags'], current_user_id)
+            await update_record_tags(client, current_record['resource_id'], record_update['tags'], current_user_id, record_id)
         
         # 返回更新后的完整记录
         return await get_full_record_detail(client, record_id, current_user_id)
@@ -585,8 +585,37 @@ async def get_full_record_detail(client, record_id: int, user_id: str):
     
     return result
 
-async def update_record_tags(client, resource_id: int, tags_data: list, user_id: str):
+async def update_record_tags(client, resource_id: int, tags_data: list, user_id: str, record_id: int = None):
     """更新记录的标签"""
+    # 如果没有资源ID但有标签数据，为记录创建一个虚拟资源
+    if not resource_id and tags_data and record_id:
+        print(f"为记录 {record_id} 创建虚拟资源以关联标签")
+        
+        # 获取记录信息作为资源
+        record_response = client.table('records').select('title, form_type').eq('record_id', record_id).execute()
+        if not record_response.data:
+            return
+            
+        record_data = record_response.data[0]
+        
+        # 创建虚拟资源
+        resource_data = {
+            'type': record_data['form_type'],
+            'title': record_data['title'],
+            'created_by': user_id
+        }
+        
+        resource_response = client.table('resources').insert(resource_data).execute()
+        if resource_response.data:
+            resource_id = resource_response.data[0]['resource_id']
+            
+            # 更新记录的resource_id
+            client.table('records').update({'resource_id': resource_id}).eq('record_id', record_id).execute()
+            print(f"✅ 为记录 {record_id} 创建了虚拟资源 {resource_id}")
+        else:
+            print(f"❌ 创建虚拟资源失败")
+            return
+    
     if not resource_id:
         return
         
