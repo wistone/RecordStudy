@@ -104,6 +104,7 @@ class LearningBuddyApp {
             article: '📄',
             exercise: '✏️',
             project: '💻',
+            workout: '🏃',
             other: '📌'
         };
         
@@ -115,9 +116,11 @@ class LearningBuddyApp {
             icon: typeIcons[backendRecord.form_type] || '📌',
             title: backendRecord.title,
             categories: backendRecord.tags ? backendRecord.tags.split(',') : [],
-            duration: backendRecord.duration_min,
-            difficulty: backendRecord.difficulty,
-            focus: backendRecord.focus,
+            duration: backendRecord.duration_min || 0,
+            difficulty: backendRecord.difficulty || null,
+            focus: backendRecord.focus || null,
+            mood: backendRecord.mood || '',
+            tags: backendRecord.tag_names || [],
             date: recordDate,
             time: recordDate.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
         };
@@ -211,7 +214,12 @@ class LearningBuddyApp {
         this.currentPage = page;
 
         // Page-specific initialization
-        if (page === 'records') {
+        if (page === 'home') {
+            // 重新加载首页数据以确保最新状态
+            this.loadData();
+            this.updateDashboard();
+            this.renderRecentRecords();
+        } else if (page === 'records') {
             this.renderAllRecords();
         } else if (page === 'analytics') {
             this.loadAnalyticsData();
@@ -1261,17 +1269,7 @@ class LearningBuddyApp {
             
             // Convert to the expected format
             if (analyticsRecords && analyticsRecords.length > 0) {
-                this.records = analyticsRecords.map(record => ({
-                    id: record.record_id,
-                    title: record.title,
-                    type: record.form_type,
-                    duration: record.duration_min || 0,
-                    date: new Date(record.occurred_at),
-                    difficulty: record.difficulty || null,
-                    focus: record.focus || null,
-                    mood: record.mood || '',
-                    tags: record.tag_names || []
-                }));
+                this.records = analyticsRecords.map(record => this.convertBackendRecord(record));
             } else {
                 this.records = [];
             }
