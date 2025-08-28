@@ -42,7 +42,6 @@ class APIService {
                 config.body = JSON.stringify(config.body);
             }
 
-            console.log(`📡 API请求: ${config.method || 'GET'} ${url}`);
             
             const response = await fetch(url, config);
             
@@ -53,7 +52,6 @@ class APIService {
 
             // 处理空响应（204 No Content 或空响应体）
             if (response.status === 204) {
-                console.log(`✅ API响应: ${url} - No Content`);
                 return null;
             }
             
@@ -62,17 +60,14 @@ class APIService {
             const contentType = response.headers.get('content-type');
             
             if (contentLength === '0' || (!contentType || !contentType.includes('application/json'))) {
-                console.log(`✅ API响应: ${url} - Empty response`);
                 return null;
             }
 
             try {
                 const data = await response.json();
-                console.log(`✅ API响应: ${url}`, data);
                 return data;
             } catch (jsonError) {
                 // 如果JSON解析失败，可能是空响应
-                console.log(`✅ API响应: ${url} - Response parsing failed, treating as success`);
                 return null;
             }
         } catch (error) {
@@ -89,7 +84,6 @@ class APIService {
     getFromCache(key) {
         const cached = this.cache.get(key);
         if (cached && Date.now() - cached.timestamp < this.cacheTimeout) {
-            console.log(`📦 使用缓存: ${key}`);
             return cached.data;
         }
         return null;
@@ -118,14 +112,12 @@ class APIService {
     
     async getDashboardSummary(days = 7) {
         // 🚫 暂时禁用所有缓存，直接调用API获取最新数据
-        console.log('📡 直接请求汇总数据 API (无缓存):', `days=${days}`);
         const data = await this.request(`/summaries/dashboard?days=${days}`);
         return data;
     }
     
     async getRecentRecords(limit = 10) {
         // 🚫 暂时禁用所有缓存，直接调用API获取最新数据
-        console.log('📡 直接请求最近记录 API (无缓存):', `limit=${limit}`);
         const data = await this.request(`/summaries/recent-records?limit=${limit}`);
         return data;
     }
@@ -143,7 +135,6 @@ class APIService {
         if (days) queryParams.set('days', days);
         
         const url = `/records?${queryParams.toString()}`;
-        console.log('📡 直接请求记录数据 API (无缓存):', url);
         const data = await this.request(url);
         return data;
     }
@@ -314,7 +305,6 @@ class APIService {
                 body: formData
             };
 
-            console.log(`📡 文件上传: ${url}`);
             
             const response = await fetch(url, config);
             

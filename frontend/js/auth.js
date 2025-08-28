@@ -34,11 +34,9 @@ class AuthService {
                 window.ENV.SUPABASE_ANON_KEY
             );
 
-            console.log('✅ Supabase 客户端初始化成功');
             
             // 监听认证状态变化
             this.supabase.auth.onAuthStateChange((event, session) => {
-                console.log('🔐 认证状态变化:', event, session?.user?.email || 'No user');
                 this.user = session?.user || null;
                 this.notifyListeners();
                 
@@ -64,7 +62,6 @@ class AuthService {
 
     // 初始化用户状态
     async initialize() {
-        console.log('🔄 初始化认证服务...');
         
 
         try {
@@ -72,9 +69,8 @@ class AuthService {
             this.user = user;
             
             if (user) {
-                console.log('✅ 初始化：发现已登录用户', user.email);
             } else {
-                console.log('❌ 初始化：未找到登录用户');
+                // 未找到登录用户
             }
             
             // 延迟通知，避免与页面初始化逻辑冲突
@@ -90,7 +86,6 @@ class AuthService {
     async signUp(email, password, displayName) {
 
         try {
-            console.log('📝 开始注册用户:', email);
             
             const { data, error } = await this.supabase.auth.signUp({
                 email: email,
@@ -109,14 +104,12 @@ class AuthService {
 
             // 如果注册成功，创建用户资料
             if (data.user) {
-                console.log('✅ 用户注册成功:', data.user.email);
                 
                 // 在profiles表中创建用户资料
                 const profileResult = await this.createUserProfile(data.user, displayName);
                 if (profileResult && profileResult.error) {
                     console.warn('⚠️ 用户资料创建失败:', profileResult.error);
                 } else {
-                    console.log('✅ 用户资料创建成功');
                 }
                 
                 this.user = data.user;
@@ -133,7 +126,6 @@ class AuthService {
     async signIn(email, password) {
 
         try {
-            console.log('🔐 开始用户登录:', email);
             
             const { data, error } = await this.supabase.auth.signInWithPassword({
                 email: email,
@@ -146,7 +138,6 @@ class AuthService {
             }
 
             if (data.user) {
-                console.log('✅ 用户登录成功:', data.user.email);
                 this.user = data.user;
             }
 
@@ -161,7 +152,6 @@ class AuthService {
     async signOut() {
 
         try {
-            console.log('👋 用户登出');
             
             const { error } = await this.supabase.auth.signOut();
             this.user = null;
@@ -169,7 +159,6 @@ class AuthService {
             if (error) {
                 console.error('❌ 登出失败:', error);
             } else {
-                console.log('✅ 用户登出成功');
             }
             
             return { error };
@@ -193,11 +182,6 @@ class AuthService {
     async createUserProfile(user, displayName) {
 
         try {
-            console.log('📝 准备创建用户档案:', {
-                user_id: user.id,
-                display_name: displayName || user.email?.split('@')[0],
-                email: user.email
-            });
 
             const { data, error } = await this.supabase
                 .from('profiles')
@@ -214,7 +198,6 @@ class AuthService {
                 return { error };
             }
 
-            console.log('✅ 用户档案创建成功:', data);
             return { error: null, data };
         } catch (error) {
             console.error('❌ 创建用户档案异常:', error);
@@ -236,11 +219,9 @@ class AuthService {
 
     // 处理登录成功
     handleSignIn() {
-        console.log('✅ 用户已登录');
         // 延迟重定向，确保认证状态完全更新
         setTimeout(() => {
             if (window.location.pathname.includes('login')) {
-                console.log('🔄 从登录页重定向到首页');
                 window.location.href = 'index.html';
             }
         }, 500);
@@ -248,7 +229,6 @@ class AuthService {
 
     // 处理登出
     handleSignOut() {
-        console.log('🚪 用户已登出');
         // 重定向到登录页
         if (!window.location.pathname.includes('login')) {
             window.location.href = 'login.html';

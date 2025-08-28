@@ -77,12 +77,14 @@ CORS_ORIGINS=http://localhost:3000,http://localhost:3001,http://localhost:8000
 - `public.records` - Learning records with comprehensive metadata
 - `public.resources` - Shared learning resources
 - `public.user_resources` - User-specific resource relationships
+- `public.tags` - Global tag system for categorization
+- `public.resource_tags` - Many-to-many relationship between resources and tags
 
 ### Demo User
 - **Email**: demo@example.com
 - **Password**: abc123123
 - **User ID**: 6d45fa47-7935-4673-ac25-bc39ca3f3481
-- **Records**: 23 sample learning entries
+- **Records**: 25+ sample learning entries with tags and resources
 
 ## Application Architecture
 
@@ -129,12 +131,18 @@ backend/
 5. **User ID**: Extracted for data filtering
 
 ### API Endpoints (`/api/v1/`)
-- `GET /records` - Get user's learning records
-- `POST /records` - Create new record
-- `PUT /records/{id}` - Update record
+#### Records API
+- `GET /records` - Get user's learning records with tags
+- `POST /records` - Create new record with automatic resource creation
+- `PUT /records/{id}` - Update record with tag management
 - `DELETE /records/{id}` - Delete record
+- `GET /records/{id}` - Get single record with full details
 - `GET /records/test` - Connection test
 - `GET /records/debug/current-user` - Debug user info
+
+#### Summary API
+- `GET /summaries/dashboard` - Dashboard analytics with caching
+- `GET /summaries/recent-records` - Recent records summary
 
 ### Data Flow
 ```
@@ -157,6 +165,24 @@ records = db.query(Record).filter_by(user_id=user_id).all()
 from supabase import create_client
 client = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
 response = client.table('records').select('*').eq('user_id', user_id).execute()
+```
+
+### Tag Management Pattern
+**✅ Virtual Resource Creation**:
+```python
+# Automatic virtual resource creation for records without resources
+if not resource_id and tags_data and record_id:
+    # Create virtual resource for tag association
+    resource_data = {
+        'type': record['form_type'],
+        'title': record['title'],
+        'description': '系统自动创建的虚拟资源（用于标签关联）',
+        'created_by': user_id
+    }
+    resource_response = client.table('resources').insert(resource_data).execute()
+    resource_id = resource_response.data[0]['resource_id']
+    # Update record to link with virtual resource
+    client.table('records').update({'resource_id': resource_id}).eq('record_id', record_id).execute()
 ```
 
 ### Frontend API Pattern
@@ -226,6 +252,9 @@ print(f'Demo user has {len(records.data)} records')
 2. **"window.apiService undefined"** - Frontend script loading order or syntax errors
 3. **"No route to host"** - Network connectivity issues with direct PostgreSQL (use Supabase client)
 4. **User ID mismatch** - Demo user ID in database doesn't match authenticated user ID
+5. **Tags not saving** - Records without resource_id couldn't save tags (fixed with virtual resource creation)
+6. **404 on delete but record deleted** - Idempotent deletion behavior (treated as success)
+7. **Tags not showing after save** - Fixed data synchronization between frontend and backend
 
 ### Debug Commands
 ```javascript
@@ -250,6 +279,10 @@ When JavaScript changes don't take effect:
 - ✅ Real-time dashboard updates
 - ✅ Multi-dimensional analytics
 - ✅ Chinese localization
+- ✅ Tag management system with virtual resource creation
+- ✅ Three-column detail page layout
+- ✅ Responsive homepage with clickable records
+- ✅ Smart caching for dashboard summaries
 
 ### Performance Targets
 - Record creation time ≤ 10 seconds
@@ -257,4 +290,29 @@ When JavaScript changes don't take effect:
 - API response time ≤ 500ms
 - Daily Active Records per user ≥ 2
 
-The application is now production-ready with secure authentication, reliable data persistence, and scalable architecture suitable for real users.
+## Recent Fixes & Improvements
+
+### Tag System Overhaul (Latest)
+- **Problem**: Records without `resource_id` couldn't save tags due to database schema constraints
+- **Solution**: Automatic virtual resource creation when tags are added to resource-less records
+- **Impact**: Now all records can have tags, improving categorization and searchability
+- **Files Modified**: `backend/app/api/records.py` (update_record_tags function)
+
+### UI/UX Enhancements
+- **Detail Page Layout**: Redesigned to three-column layout (basic info + notes + tags/resources)
+- **Action Button Consolidation**: Moved edit/delete/cancel buttons to top header for consistency
+- **Homepage Improvements**: Added dates, tags, and clickable records with action buttons
+- **Responsive Design**: Records maintain proper layout and buttons after filtering
+
+### Data Integrity Fixes
+- **Delete Behavior**: Fixed 404 errors on successful deletions (idempotent behavior)
+- **Tag Synchronization**: Fixed tags not showing after save/return to list
+- **Time Zone Handling**: Proper UTC storage with local display conversion
+- **Database Constraints**: Handle null values properly (ISBN, etc.)
+
+### Performance Optimizations
+- **Smart Caching**: Dashboard summaries cached for 5 minutes with automatic invalidation
+- **API Efficiency**: Optimized record queries to include tag information in single request
+- **Frontend State Management**: Improved data synchronization between views
+
+The application is now production-ready with secure authentication, reliable data persistence, comprehensive tag management, and scalable architecture suitable for real users.

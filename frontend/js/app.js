@@ -37,7 +37,6 @@ class LearningBuddyApp {
             this.showLoading(true);
             
             // 🚀 使用新的汇总API，大幅减少数据传输和处理时间
-            console.log('📡 正在加载首页汇总数据...');
             
             // 并行加载不同时间段的汇总数据，使用独立错误处理避免一个失败导致全部失败
             const [weekResult, monthResult, recentResult] = await Promise.allSettled([
@@ -51,18 +50,12 @@ class LearningBuddyApp {
             this.monthSummary = monthResult.status === 'fulfilled' ? monthResult.value : null;
             this.dashboardSummary = this.weekSummary || this.monthSummary; // 保持兼容性
             
-            console.log('📊 汇总数据加载结果:', {
-                week: weekResult.status,
-                month: monthResult.status,
-                recent: recentResult.status
-            });
             
             // 转换最近记录格式（保持兼容性）
             const recentRecordsData = recentResult.status === 'fulfilled' ? recentResult.value : null;
             this.records = recentRecordsData?.records ? 
                 recentRecordsData.records.map(record => this.convertBackendRecord(record)) : [];
             
-            console.log('✅ 已加载汇总数据和', this.records.length, '条最近记录');
             
         } catch (error) {
             console.error('❌ 加载数据失败:', error);
@@ -79,7 +72,6 @@ class LearningBuddyApp {
         try {
             this.showLoading(true);
             
-            console.log('📡 正在加载完整记录列表...');
             
             // 分批加载所有记录（由于API限制每次最多100条）
             let allRecords = [];
@@ -109,7 +101,6 @@ class LearningBuddyApp {
             // 转换记录格式
             this.records = allRecords.map(record => this.convertBackendRecord(record));
             
-            console.log('✅ 已加载完整记录列表:', this.records.length, '条记录');
             
         } catch (error) {
             console.error('❌ 加载记录列表失败:', error);
@@ -173,11 +164,6 @@ class LearningBuddyApp {
         
         // 处理标签数据 - 统一处理各种可能的标签字段
         let categories = [];
-        console.log('🔍 convertBackendRecord 处理标签:', {
-            tags: backendRecord.tags,
-            tag_names: backendRecord.tag_names,
-            categories: backendRecord.categories
-        });
         
         if (backendRecord.tags && Array.isArray(backendRecord.tags)) {
             categories = backendRecord.tags.map(tag => tag.tag_name || tag.name || tag).filter(Boolean);
@@ -189,7 +175,6 @@ class LearningBuddyApp {
             categories = backendRecord.categories.filter(Boolean);
         }
         
-        console.log('🏷️ 转换后的标签:', categories);
 
         return {
             id: backendRecord.record_id,
@@ -333,7 +318,6 @@ class LearningBuddyApp {
             // 为records页面加载完整的记录列表（不是仅最近20条）
             // 如果数据最近刚更新过，直接渲染不重新加载
             if (this.lastRecordUpdate && (Date.now() - this.lastRecordUpdate < 5000)) {
-                console.log('🔄 使用最近更新的记录数据，无需重新加载');
                 this.renderAllRecords();
             } else {
                 this.loadAllRecords().then(() => {
@@ -371,7 +355,6 @@ class LearningBuddyApp {
         // 重新绑定事件
         document.querySelectorAll('.tag-suggestion').forEach(tag => {
             tag.addEventListener('click', (e) => {
-                console.log('点击标签建议:', e.target.textContent);
                 this.addTag(e.target.textContent);
             });
         });
@@ -498,7 +481,6 @@ class LearningBuddyApp {
                 mood: mood
             };
             
-            console.log('💾 保存记录:', recordPayload);
             
             // 发送到后端
             const savedRecord = await window.apiService.createRecord(recordPayload);
@@ -785,7 +767,6 @@ class LearningBuddyApp {
     updateDashboard() {
         // 🚀 使用预计算的汇总数据，避免前端重复计算
         if (this.weekSummary && this.monthSummary) {
-            console.log('📊 使用预计算汇总数据更新仪表盘');
             
             // 更新今日数据 - 使用周数据中的今日统计
             const todayEl = document.getElementById('todayDuration');
@@ -809,14 +790,8 @@ class LearningBuddyApp {
             const streakEl = document.getElementById('streakDays');
             if (streakEl) streakEl.textContent = this.monthSummary.streak_days || 0;
             
-            console.log('✅ 仪表盘数据更新完成', {
-                week: this.weekSummary, 
-                month: this.monthSummary
-            });
-            
         } else if (this.dashboardSummary) {
             // 单一汇总数据的回退逻辑
-            console.log('📊 使用单一汇总数据更新仪表盘');
             const summary = this.dashboardSummary;
             
             const todayEl = document.getElementById('todayDuration');
@@ -837,7 +812,6 @@ class LearningBuddyApp {
             
         } else {
             // 回退到原来的计算方式（如果汇总数据不可用）
-            console.log('⚠️ 汇总数据不可用，回退到客户端计算');
             this.updateDashboardFallback();
         }
     }
@@ -904,7 +878,6 @@ class LearningBuddyApp {
     // 记录创建后清除相关缓存
     async clearCacheAfterRecordCreation() {
         try {
-            console.log('🗑️ 清除缓存（新记录已创建）');
             
             // 清除 IndexedDB 缓存
             if (window.cacheService && window.cacheService.isInitialized) {
@@ -919,7 +892,6 @@ class LearningBuddyApp {
                 window.apiService.clearCache('summaries');
             }
             
-            console.log('✅ 缓存清除完成');
         } catch (error) {
             console.error('❌ 清除缓存失败:', error);
         }
@@ -953,7 +925,6 @@ class LearningBuddyApp {
             }
         }
         
-        console.log(`📊 Conditional sections updated. Has records: ${hasRecords}`);
     }
 
     renderRecentRecords() {
@@ -1424,12 +1395,6 @@ class LearningBuddyApp {
             periodLabel = `全年总计: ${(totalDuration/60).toFixed(1)}小时`;
         }
         
-        console.log(`📊 ${this.currentPeriod} 视图计算:`, {
-            recordCount: this.records.length,
-            totalDuration: `${totalDuration}分钟`,
-            hours: `${(totalDuration/60).toFixed(1)}小时`
-        });
-        
         // Update the section title with summary info
         const titleElement = document.querySelector('.time-stats-container .section-title');
         if (titleElement) {
@@ -1463,7 +1428,6 @@ class LearningBuddyApp {
             this.renderMiniCalendar();
             this.renderChart();
             
-            console.log(`📊 Analytics loaded with ${this.records.length} records`);
             
         } catch (error) {
             console.error('❌ Analytics data loading failed:', error);
@@ -1478,7 +1442,6 @@ class LearningBuddyApp {
 
     // 删除记录相关函数
     confirmDeleteRecord(recordId) {
-        console.log('🗑️ 确认删除记录 ID:', recordId);
         
         const record = this.records.find(r => (r.record_id || r.id) == recordId);
         if (!record) {
@@ -1487,7 +1450,6 @@ class LearningBuddyApp {
             return;
         }
 
-        console.log('✅ 找到要删除的记录:', record);
         
         // 保存要删除的记录ID到实例变量
         this.pendingDeleteRecordId = recordId;
@@ -1541,7 +1503,6 @@ class LearningBuddyApp {
             return;
         }
 
-        console.log('🗑️ 执行删除记录 ID:', recordId);
         
         try {
             // 显示加载状态 - 选择弹框中的确认删除按钮
@@ -1554,11 +1515,9 @@ class LearningBuddyApp {
             // 调用后端API删除记录
             try {
                 await window.apiService.deleteRecord(recordId);
-                console.log('✅ 删除API调用成功');
             } catch (apiError) {
                 // 404错误表示记录已经不存在，对于删除操作这是成功的
                 if (apiError.message && apiError.message.includes('Record not found')) {
-                    console.log('✅ 记录已不存在，删除操作视为成功');
                 } else {
                     throw apiError; // 其他错误重新抛出
                 }
@@ -1584,7 +1543,6 @@ class LearningBuddyApp {
             // 如果当前在详情页，则跳转回记录列表页
             const recordDetailPage = document.getElementById('recordDetailPage');
             if (recordDetailPage && recordDetailPage.style.display === 'block') {
-                console.log('📄 当前在详情页，删除成功后自动返回记录列表');
                 this.navigateTo('records');
             }
 
@@ -1649,7 +1607,6 @@ class LearningBuddyApp {
         // 填充数据
         this.populateRecordDetail(recordDetail);
         
-        console.log('📄 显示记录详情:', recordDetail);
     }
 
     // 填充记录详情数据
@@ -1777,7 +1734,7 @@ class LearningBuddyApp {
             try {
                 assets = JSON.parse(assets);
             } catch (e) {
-                console.log('Assets not in JSON format, treating as empty array');
+                // Assets not in JSON format, treating as empty array
                 assets = [];
             }
         }
@@ -1903,7 +1860,6 @@ class LearningBuddyApp {
             
             // 调用API更新记录
             const updatedRecord = await window.apiService.updateRecord(this.currentRecordId, updateData);
-            console.log('🔍 API返回的完整更新数据:', updatedRecord);
             
             // 更新本地数据
             this.currentRecordDetail = { ...this.currentRecordDetail, ...updatedRecord };
@@ -1916,7 +1872,6 @@ class LearningBuddyApp {
                 const updatedRecordWithTags = { ...updatedRecord };
                 if ((!updatedRecord.tags || updatedRecord.tags.length === 0) && 
                     this.currentRecordDetail.tags && this.currentRecordDetail.tags.length > 0) {
-                    console.log('🔧 后端返回空标签，使用本地标签数据');
                     updatedRecordWithTags.tags = this.currentRecordDetail.tags.map(tag => tag.tag_name || tag);
                 }
                 
@@ -1926,9 +1881,7 @@ class LearningBuddyApp {
                     ...updatedRecordWithTags,
                     record_id: this.currentRecordId
                 };
-                console.log('🔄 更新记录数据:', { fullUpdatedRecord, original: this.records[recordIndex] });
                 const updatedRecordForList = this.convertBackendRecord(fullUpdatedRecord);
-                console.log('✅ 转换后的记录数据:', updatedRecordForList);
                 this.records[recordIndex] = updatedRecordForList;
                 
                 // 标记记录数据已更新
@@ -2058,7 +2011,6 @@ class LearningBuddyApp {
         // 清空输入框
         tagInput.value = '';
         
-        console.log('📝 添加标签:', newTag);
     }
 
     removeTag(tagId) {
@@ -2070,7 +2022,6 @@ class LearningBuddyApp {
         // 更新显示
         this.displayTags(this.currentRecordDetail.tags);
         
-        console.log('🗑️ 删除标签:', tagId);
     }
 }
 
