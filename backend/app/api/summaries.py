@@ -162,38 +162,29 @@ async def get_dashboard_summary(
             for k, v in type_stats.items()
         ]
         
-        # 计算连续学习天数（使用本地时区）
-        streak_days = 0
+        # 计算当前连续学习天数
+        consecutive_days = 0
         local_now = datetime.now(USER_TIMEZONE)
         today = local_now.date()
         yesterday = today - timedelta(days=1)
         
-        # 如果今天有记录，从今天开始计算连续天数
+        # 如果今天有学习记录，从今天开始往前计算连续天数
         if today in learning_dates:
             check_date = today
             while check_date in learning_dates:
-                streak_days += 1
+                consecutive_days += 1
                 check_date = check_date - timedelta(days=1)
-        # 如果今天没有记录但昨天有记录，连续天数为0（今天断了）
+        
+        # 如果今天没有学习但昨天有，从昨天开始往前计算连续天数
         elif yesterday in learning_dates:
-            streak_days = 0
-        # 如果今天和昨天都没有记录，检查是否有其他连续的学习天数
+            check_date = yesterday
+            while check_date in learning_dates:
+                consecutive_days += 1
+                check_date = check_date - timedelta(days=1)
+        
+        # 如果今天和昨天都没有学习记录，连续天数为0
         else:
-            # 找到最近的学习日期
-            if learning_dates:
-                recent_dates = sorted(learning_dates, reverse=True)
-                latest_date = recent_dates[0]
-                
-                # 如果最近的学习日期距离今天超过1天，连续天数为0
-                days_since_latest = (today - latest_date).days
-                if days_since_latest > 1:
-                    streak_days = 0
-                else:
-                    # 从最近的日期开始计算连续天数
-                    check_date = latest_date
-                    while check_date in learning_dates:
-                        streak_days += 1
-                        check_date = check_date - timedelta(days=1)
+            consecutive_days = 0
         
         # 今日统计（使用本地时区）
         today_records = []
@@ -214,7 +205,7 @@ async def get_dashboard_summary(
             "total_records": total_records,
             "total_duration_hours": round(total_duration / 60, 1) if total_duration else 0,
             "learning_days": learning_days,
-            "streak_days": streak_days,
+            "streak_days": consecutive_days,
             "avg_difficulty": round(avg_difficulty, 1),
             "avg_focus": round(avg_focus, 1),
             "daily_avg_duration": round(total_duration / max(learning_days, 1), 1) if total_duration else 0,
