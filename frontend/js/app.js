@@ -932,22 +932,33 @@ class LearningBuddyApp {
             return;
         }
         
-        container.innerHTML = recentRecords.map(record => `
-            <div class="record-item">
-                <div class="record-type">${record.icon || '📌'}</div>
-                <div class="record-content">
-                    <div class="record-title">${record.title || '无标题'}</div>
-                    <div class="record-meta">
-                        ${record.categories && record.categories.length > 0 && record.categories.filter(Boolean).length > 0
-                            ? `<span class="record-tags">${record.categories.filter(Boolean).join(', ')}</span>` 
-                            : ''}
-                        <span>${record.dateString || '无日期'}</span>
-                        <span>${record.time || '无时间'}</span>
-                        <span class="record-duration">${record.duration || 0}分钟</span>
+        container.innerHTML = recentRecords.map(record => {
+            const recordId = record.record_id || record.id;
+            return `
+                <div class="record-item" onclick="app.viewRecordDetail(${recordId})">
+                    <div class="record-type">${record.icon || '📌'}</div>
+                    <div class="record-content">
+                        <div class="record-title">${record.title || '无标题'}</div>
+                        <div class="record-meta">
+                            ${record.categories && record.categories.length > 0 && record.categories.filter(Boolean).length > 0
+                                ? `<span class="record-tags">${record.categories.filter(Boolean).join(', ')}</span>` 
+                                : ''}
+                            <span>${record.dateString || '无日期'}</span>
+                            <span>${record.time || '无时间'}</span>
+                            <span class="record-duration">${record.duration || 0}分钟</span>
+                        </div>
+                    </div>
+                    <div class="record-actions" onclick="event.stopPropagation()">
+                        <button class="btn-action btn-detail" onclick="app.viewRecordDetail(${recordId})" title="查看记录详情">
+                            📄 详情
+                        </button>
+                        <button class="btn-action btn-delete" onclick="app.confirmDeleteRecord(${recordId})" title="删除记录">
+                            🗑️删除
+                        </button>
                     </div>
                 </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
     }
 
     renderAllRecords() {
@@ -975,7 +986,7 @@ class LearningBuddyApp {
             const recordId = record.record_id || record.id;
             
             return `
-                <div class="record-item">
+                <div class="record-item" onclick="app.viewRecordDetail(${recordId})">
                     <div class="record-type">${record.icon}</div>
                     <div class="record-content">
                         <div class="record-title">${record.title}</div>
@@ -988,7 +999,7 @@ class LearningBuddyApp {
                             <span class="record-duration">${record.duration || 0}分钟</span>
                         </div>
                     </div>
-                    <div class="record-actions">
+                    <div class="record-actions" onclick="event.stopPropagation()">
                         <button class="btn-action btn-detail" onclick="app.viewRecordDetail(${recordId})" title="查看记录详情">
                             📄 详情
                         </button>
@@ -1019,21 +1030,33 @@ class LearningBuddyApp {
         }
         
         const container = document.getElementById('recordsList');
-        container.innerHTML = filtered.map(record => `
-            <div class="record-item">
-                <div class="record-type">${record.icon}</div>
-                <div class="record-content">
-                    <div class="record-title">${record.title}</div>
-                    <div class="record-meta">
-                        ${record.categories && record.categories.length > 0 && record.categories[0] !== '' 
-                            ? `<span class="record-tags">${record.categories.join(', ')}</span>` 
-                            : ''}
-                        <span>${record.date.toLocaleDateString('zh-CN')}</span>
-                        <span class="record-duration">${record.duration}分钟</span>
+        container.innerHTML = filtered.map(record => {
+            const recordId = record.record_id || record.id;
+            return `
+                <div class="record-item" onclick="app.viewRecordDetail(${recordId})">
+                    <div class="record-type">${record.icon}</div>
+                    <div class="record-content">
+                        <div class="record-title">${record.title}</div>
+                        <div class="record-meta">
+                            ${record.categories && record.categories.length > 0 && record.categories.filter(Boolean).length > 0
+                                ? `<span class="record-tags">${record.categories.filter(Boolean).join(', ')}</span>` 
+                                : ''}
+                            <span>${record.dateString || record.date.toLocaleDateString('zh-CN')}</span>
+                            <span>${record.time || record.date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</span>
+                            <span class="record-duration">${record.duration || 0}分钟</span>
+                        </div>
+                    </div>
+                    <div class="record-actions" onclick="event.stopPropagation()">
+                        <button class="btn-action btn-detail" onclick="app.viewRecordDetail(${recordId})" title="查看记录详情">
+                            📄 详情
+                        </button>
+                        <button class="btn-action btn-delete" onclick="app.confirmDeleteRecord(${recordId})" title="删除记录">
+                            🗑️删除
+                        </button>
                     </div>
                 </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
     }
 
     renderAnalytics() {
