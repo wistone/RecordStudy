@@ -43,7 +43,7 @@ class LearningBuddyApp {
             const [weekResult, monthResult, recentResult] = await Promise.allSettled([
                 window.apiService.getDashboardSummary(7),  // 最近7天汇总(本周)
                 window.apiService.getDashboardSummary(30), // 最近30天汇总(本月)
-                window.apiService.getRecentRecords(20)     // 最近20条记录
+                window.apiService.getRecords({ limit: 20, skip: 0 })  // 最近20条记录（使用完整API获取标签）
             ]);
             
             // 安全地提取数据，处理部分失败的情况
@@ -60,7 +60,7 @@ class LearningBuddyApp {
             // 转换最近记录格式（保持兼容性）
             const recentRecordsData = recentResult.status === 'fulfilled' ? recentResult.value : null;
             this.records = recentRecordsData?.records ? 
-                recentRecordsData.records.map(record => this.convertRecentRecord(record)) : [];
+                recentRecordsData.records.map(record => this.convertBackendRecord(record)) : [];
             
             console.log('✅ 已加载汇总数据和', this.records.length, '条最近记录');
             
@@ -107,7 +107,7 @@ class LearningBuddyApp {
             }
             
             // 转换记录格式
-            this.records = allRecords.map(record => this.convertRecentRecord(record));
+            this.records = allRecords.map(record => this.convertBackendRecord(record));
             
             console.log('✅ 已加载完整记录列表:', this.records.length, '条记录');
             
@@ -124,20 +124,33 @@ class LearningBuddyApp {
     convertRecentRecord(backendRecord) {
         const typeIcons = {
             video: '📹', podcast: '🎙️', book: '📚', course: '🎓',
-            article: '📄', exercise: '✏️', project: '💻', other: '📌'
+            article: '📄', exercise: '✏️', project: '💻', workout: '🏃', 
+            paper: '📑', other: '📌'
         };
         
         const recordDate = new Date(backendRecord.occurred_at);
         
+        // 处理标签数据 - 可能来自不同的字段
+        let categories = [];
+        if (backendRecord.tags && Array.isArray(backendRecord.tags)) {
+            categories = backendRecord.tags.map(tag => tag.tag_name || tag.name || tag).filter(Boolean);
+        } else if (backendRecord.categories && Array.isArray(backendRecord.categories)) {
+            categories = backendRecord.categories.filter(Boolean);
+        } else if (typeof backendRecord.tags === 'string' && backendRecord.tags.trim()) {
+            categories = [backendRecord.tags];
+        }
+        
         return {
             id: backendRecord.record_id,  // 使用正确的record_id字段
             record_id: backendRecord.record_id,  // 保持双重兼容性
-            type: backendRecord.type,
-            icon: typeIcons[backendRecord.type] || '📌',
+            type: backendRecord.form_type || backendRecord.type, // 使用form_type作为主要类型字段
+            icon: typeIcons[backendRecord.form_type || backendRecord.type] || '📌',
             title: backendRecord.title,
             duration: backendRecord.duration_min || 0,
             date: recordDate,
-            time: recordDate.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+            dateString: recordDate.toLocaleDateString('zh-CN'), // 添加日期字符串
+            time: recordDate.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
+            categories: categories // 添加标签数据
         };
     }
     
@@ -152,24 +165,38 @@ class LearningBuddyApp {
             exercise: '✏️',
             project: '💻',
             workout: '🏃',
+            paper: '📑',
             other: '📌'
         };
         
         const recordDate = new Date(backendRecord.occurred_at);
         
+        // 处理标签数据 - 统一处理各种可能的标签字段
+        let categories = [];
+        if (backendRecord.tags && Array.isArray(backendRecord.tags)) {
+            categories = backendRecord.tags.map(tag => tag.tag_name || tag.name || tag).filter(Boolean);
+        } else if (backendRecord.tag_names && Array.isArray(backendRecord.tag_names)) {
+            categories = backendRecord.tag_names.filter(Boolean);
+        } else if (typeof backendRecord.tags === 'string' && backendRecord.tags.trim()) {
+            categories = backendRecord.tags.split(',').map(tag => tag.trim()).filter(Boolean);
+        } else if (backendRecord.categories && Array.isArray(backendRecord.categories)) {
+            categories = backendRecord.categories.filter(Boolean);
+        }
+
         return {
             id: backendRecord.record_id,
             record_id: backendRecord.record_id,  // 保留原始ID用于API调用
             type: backendRecord.form_type,
             icon: typeIcons[backendRecord.form_type] || '📌',
             title: backendRecord.title,
-            categories: backendRecord.tags ? backendRecord.tags.split(',') : [],
+            categories: categories, // 使用处理后的标签数据
             duration: backendRecord.duration_min || 0,
             difficulty: backendRecord.difficulty || null,
             focus: backendRecord.focus || null,
             mood: backendRecord.mood || '',
-            tags: backendRecord.tag_names || [],
+            tags: categories, // 保持向后兼容
             date: recordDate,
+            dateString: recordDate.toLocaleDateString('zh-CN'), // 添加日期字符串
             time: recordDate.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
         };
     }
@@ -183,6 +210,22 @@ class LearningBuddyApp {
                 this.navigateTo(page || 'home');
             });
         });
+        
+        // Hash route handling for direct links like "查看全部"
+        window.addEventListener('hashchange', () => {
+            const hash = window.location.hash;
+            if (hash) {
+                const page = hash.replace('#/', '');
+                this.navigateTo(page || 'home');
+            }
+        });
+        
+        // Handle initial hash on page load
+        const initialHash = window.location.hash;
+        if (initialHash) {
+            const page = initialHash.replace('#/', '');
+            this.navigateTo(page || 'home');
+        }
 
         // Type buttons
         document.querySelectorAll('.type-btn').forEach(btn => {
@@ -246,6 +289,10 @@ class LearningBuddyApp {
     }
 
     navigateTo(page) {
+        // Update URL hash without triggering hashchange event
+        if (window.location.hash !== `#/${page}`) {
+            window.location.hash = `#/${page}`;
+        }
         this.showPage(page);
     }
 
@@ -887,15 +934,16 @@ class LearningBuddyApp {
         
         container.innerHTML = recentRecords.map(record => `
             <div class="record-item">
-                <div class="record-type">${record.icon}</div>
+                <div class="record-type">${record.icon || '📌'}</div>
                 <div class="record-content">
-                    <div class="record-title">${record.title}</div>
+                    <div class="record-title">${record.title || '无标题'}</div>
                     <div class="record-meta">
-                        ${record.categories && record.categories.length > 0 && record.categories[0] !== '' 
-                            ? `<span class="record-tags">${record.categories.join(', ')}</span>` 
+                        ${record.categories && record.categories.length > 0 && record.categories.filter(Boolean).length > 0
+                            ? `<span class="record-tags">${record.categories.filter(Boolean).join(', ')}</span>` 
                             : ''}
-                        <span>${record.time || record.date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</span>
-                        <span class="record-duration">${record.duration}分钟</span>
+                        <span>${record.dateString || '无日期'}</span>
+                        <span>${record.time || '无时间'}</span>
+                        <span class="record-duration">${record.duration || 0}分钟</span>
                     </div>
                 </div>
             </div>
@@ -932,12 +980,12 @@ class LearningBuddyApp {
                     <div class="record-content">
                         <div class="record-title">${record.title}</div>
                         <div class="record-meta">
-                            ${record.categories && record.categories.length > 0 && record.categories[0] !== '' 
-                                ? `<span class="record-tags">${record.categories.join(', ')}</span>` 
+                            ${record.categories && record.categories.length > 0 && record.categories.filter(Boolean).length > 0
+                                ? `<span class="record-tags">${record.categories.filter(Boolean).join(', ')}</span>` 
                                 : ''}
-                            <span>${record.date.toLocaleDateString('zh-CN')}</span>
+                            <span>${record.dateString || record.date.toLocaleDateString('zh-CN')}</span>
                             <span>${record.time || record.date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</span>
-                            <span class="record-duration">${record.duration}分钟</span>
+                            <span class="record-duration">${record.duration || 0}分钟</span>
                         </div>
                     </div>
                     <div class="record-actions">
