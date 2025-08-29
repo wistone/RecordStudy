@@ -481,7 +481,7 @@ body {
     grid-template-columns: auto 1fr auto;
     gap: 16px;
     align-items: center;
-    min-height: 80px;
+    height: 88px;
 }
 
 .record-item:hover {
