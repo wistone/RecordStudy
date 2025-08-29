@@ -1114,6 +1114,31 @@ body {
     padding: 24px;
 }
 
+/* Detailed Record Link */
+.detailed-record-link {
+    display: flex;
+    align-items: center;
+}
+
+.detailed-record-link a {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-size: 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.detailed-record-link a:hover {
+    background: var(--bg-tertiary);
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
 /* Tabs */
 .tabs {
     display: flex;
@@ -1343,9 +1368,15 @@ body {
 .form-nav {
     display: flex;
     justify-content: space-between;
+    align-items: center;
     margin-top: 32px;
     padding-top: 24px;
-    border-top: 1px solid var(--border-color);
+}
+
+.form-nav .btn-group {
+    display: flex;
+    gap: 12px;
+    align-items: center;
 }
 
 /* Quick Note */

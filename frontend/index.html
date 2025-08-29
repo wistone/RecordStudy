@@ -621,9 +621,18 @@
 
                             <!-- Form Navigation -->
                             <div class="form-nav">
-                                <button type="button" class="btn btn-secondary" onclick="app.prevStep()">上一步</button>
-                                <button type="button" class="btn btn-primary" onclick="app.nextStep()">下一步</button>
-                                <button type="submit" class="btn btn-success" style="display:none;">完成记录</button>
+                                <div class="btn-group">
+                                    <button type="button" class="btn btn-secondary" onclick="app.prevStep()">上一步</button>
+                                    <button type="button" class="btn btn-primary" onclick="app.nextStep()">下一步</button>
+                                    <button type="submit" class="btn btn-success" style="display:none;">完成记录</button>
+                                </div>
+                                
+                                <!-- Detailed Record Link -->
+                                <div class="detailed-record-link">
+                                    <a href="javascript:void(0)" onclick="app.createNewDetailedRecord()">
+                                        需要填写更多信息？前往详细记录 →
+                                    </a>
+                                </div>
                             </div>
                         </form>
                     </div>

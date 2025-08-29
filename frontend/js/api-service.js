@@ -46,8 +46,33 @@ class APIService {
             const response = await fetch(url, config);
             
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.detail || `HTTP ${response.status}: ${response.statusText}`);
+                let errorData = {};
+                try {
+                    errorData = await response.json();
+                } catch (jsonError) {
+                    console.error('无法解析错误响应JSON:', jsonError);
+                }
+                console.error('API详细错误:', errorData);
+                console.error('HTTP状态:', response.status, response.statusText);
+                
+                // 构造详细的错误信息
+                let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+                if (errorData.detail) {
+                    if (Array.isArray(errorData.detail)) {
+                        // 处理Pydantic验证错误数组
+                        const errors = errorData.detail.map(err => `${err.loc?.join('.')||'unknown'}: ${err.msg||err.type||'validation error'}`).join('; ');
+                        errorMessage = `验证错误: ${errors}`;
+                        console.error('Pydantic验证错误详情:', errorData.detail);
+                    } else {
+                        errorMessage = errorData.detail;
+                    }
+                } else if (errorData.message) {
+                    errorMessage = errorData.message;
+                } else if (Object.keys(errorData).length > 0) {
+                    errorMessage = JSON.stringify(errorData, null, 2);
+                }
+                
+                throw new Error(errorMessage);
             }
 
             // 处理空响应（204 No Content 或空响应体）

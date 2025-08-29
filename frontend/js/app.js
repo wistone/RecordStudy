@@ -8,6 +8,7 @@ class LearningBuddyApp {
         this.currentMonth = new Date();
         this.currentPeriod = 'week'; // week, month, year
         this.isSubmitting = false; // 防止重复提交
+        this.isCreatingNew = false; // 标记是否正在创建新记录
         this.init();
     }
 
@@ -1594,6 +1595,7 @@ class LearningBuddyApp {
         this.currentRecordId = recordDetail.record_id;
         this.currentRecordDetail = recordDetail;
         this.isEditMode = false;
+        this.isCreatingNew = false; // 这是查看现有记录，不是创建新记录
 
         // 隐藏所有页面
         document.querySelectorAll('.page').forEach(page => page.style.display = 'none');
@@ -1607,6 +1609,125 @@ class LearningBuddyApp {
         // 填充数据
         this.populateRecordDetail(recordDetail);
         
+    }
+
+    // 收集快速记录表单中的当前数据
+    collectQuickRecordData() {
+        // 收集标题
+        const titleInput = document.getElementById('recordTitle');
+        const title = titleInput ? titleInput.value.trim() : '';
+        
+        // 收集时长
+        const durationInput = document.getElementById('recordDuration');
+        const duration = durationInput ? parseInt(durationInput.value) || 0 : 0;
+        
+        // 收集心情记录
+        const moodInput = document.getElementById('recordMood');
+        const mood = moodInput ? moodInput.value.trim() : '';
+        
+        // 收集标签输入框的值
+        const tagInput = document.getElementById('tagInput');
+        const currentTagInput = tagInput ? tagInput.value.trim() : '';
+        
+        return {
+            title,
+            form_type: this.recordData.type || 'article',
+            duration_min: duration,
+            difficulty: this.recordData.difficulty || 0,
+            focus: this.recordData.focus || 0,
+            energy: this.recordData.energy || 0,
+            mood,
+            tags: [...(this.recordData.tags || [])], // 复制已有标签
+            currentTagInput // 当前正在输入但未添加的标签
+        };
+    }
+
+    // 创建新的详细记录
+    createNewDetailedRecord() {
+        // 收集快速记录表单中已填写的数据
+        const quickRecordData = this.collectQuickRecordData();
+        
+        // 关闭快速记录弹窗
+        this.closeQuickRecord();
+        
+        // 创建记录数据结构，使用快速记录中的数据作为初始值
+        const newRecordTemplate = {
+            record_id: null,
+            title: quickRecordData.title,
+            form_type: quickRecordData.form_type,
+            occurred_at: new Date().toISOString(),
+            duration_min: quickRecordData.duration_min || '',
+            difficulty: quickRecordData.difficulty,
+            focus: quickRecordData.focus,
+            energy: quickRecordData.energy,
+            mood: quickRecordData.mood,
+            body_md: '',
+            tags: quickRecordData.tags.map(tagName => ({ tag_name: tagName })), // 转换为详细记录的标签格式
+            resource: null,
+            user_resource: null,
+            assets: []
+        };
+        
+        // 如果有未添加的标签输入，自动添加到标签列表
+        if (quickRecordData.currentTagInput) {
+            newRecordTemplate.tags.push({ tag_name: quickRecordData.currentTagInput });
+        }
+        
+        // 调试日志
+        console.log('从快速记录传递到详细记录的数据:', quickRecordData);
+        console.log('详细记录模板数据:', newRecordTemplate);
+        
+        // 设置创建模式
+        this.isCreatingNew = true;
+        this.currentRecordId = null;
+        this.currentRecordDetail = newRecordTemplate;
+        this.isEditMode = true; // 新记录直接进入编辑模式
+
+        // 隐藏所有页面
+        document.querySelectorAll('.page').forEach(page => page.style.display = 'none');
+        
+        // 显示记录详情页面
+        document.getElementById('recordDetailPage').style.display = 'block';
+        
+        // 更新导航状态
+        document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+        
+        // 填充空数据并设置为编辑模式
+        this.populateRecordDetail(newRecordTemplate);
+        this.setEditMode(true);
+        
+        // 更新页面标题和按钮文本
+        document.getElementById('recordDetailTitle').textContent = '创建新记录';
+        
+        // 更新面包屑导航
+        const breadcrumb = document.querySelector('.breadcrumb');
+        if (breadcrumb) {
+            breadcrumb.innerHTML = `
+                <span class="breadcrumb-link" onclick="app.showPage('home')">首页</span>
+                <span class="breadcrumb-separator">›</span>
+                <span class="breadcrumb-current">创建记录</span>
+            `;
+        }
+        
+        // 更新保存按钮文本
+        const saveBtn = document.getElementById('saveDetailBtn');
+        if (saveBtn) {
+            saveBtn.textContent = '创建记录';
+        }
+        
+        // 隐藏删除按钮（新记录不能删除）
+        const deleteBtn = document.getElementById('deleteRecordBtn');
+        if (deleteBtn) {
+            deleteBtn.style.display = 'none';
+        }
+        
+        // 聚焦到标题字段
+        setTimeout(() => {
+            const titleField = document.getElementById('recordDetailTitleField');
+            if (titleField) {
+                titleField.focus();
+            }
+        }, 100);
     }
 
     // 填充记录详情数据
@@ -1643,30 +1764,29 @@ class LearningBuddyApp {
         document.getElementById('recordDetailMood').value = data.mood || '';
         document.getElementById('recordDetailBodyMd').value = data.body_md || '';
         
-        // 资源信息
-        if (data.resource) {
+        // 资源信息 - 在创建新记录或已有资源时显示
+        if (data.resource || this.isCreatingNew) {
             document.getElementById('resourceSection').style.display = 'block';
-            document.getElementById('resourceDetailTitle').value = data.resource.title || '';
-            document.getElementById('resourceDetailType').value = data.resource.type || '';
-            document.getElementById('resourceDetailAuthor').value = data.resource.author || '';
-            document.getElementById('resourceDetailUrl').value = data.resource.url || '';
-            document.getElementById('resourceDetailPlatform').value = data.resource.platform || '';
-            document.getElementById('resourceDetailIsbn').value = data.resource.isbn || '';
-            document.getElementById('resourceDetailDescription').value = data.resource.description || '';
-            
+            document.getElementById('resourceDetailTitle').value = data.resource?.title || '';
+            document.getElementById('resourceDetailType').value = data.resource?.type || '';
+            document.getElementById('resourceDetailAuthor').value = data.resource?.author || '';
+            document.getElementById('resourceDetailUrl').value = data.resource?.url || '';
+            document.getElementById('resourceDetailPlatform').value = data.resource?.platform || '';
+            document.getElementById('resourceDetailIsbn').value = data.resource?.isbn || '';
+            document.getElementById('resourceDetailDescription').value = data.resource?.description || '';
         } else {
             document.getElementById('resourceSection').style.display = 'none';
         }
         
-        // 用户资源关系
-        if (data.user_resource) {
+        // 用户资源关系 - 在创建新记录或已有用户资源时显示
+        if (data.user_resource || this.isCreatingNew) {
             document.getElementById('userResourceSection').style.display = 'block';
-            document.getElementById('userResourceStatus').value = data.user_resource.status || '';
-            this.setRatingDisplay('userResourceRating', data.user_resource.rating || 0);
-            document.getElementById('userResourceReview').value = data.user_resource.review_short || '';
-            document.getElementById('userResourceFavorite').checked = data.user_resource.is_favorite || false;
+            document.getElementById('userResourceStatus').value = data.user_resource?.status || '';
+            this.setRatingDisplay('userResourceRating', data.user_resource?.rating || 0);
+            document.getElementById('userResourceReview').value = data.user_resource?.review_short || '';
+            document.getElementById('userResourceFavorite').checked = data.user_resource?.is_favorite || false;
             document.getElementById('userResourceTotalDuration').textContent = 
-                `${data.user_resource.total_duration_min || 0} 分钟`;
+                `${data.user_resource?.total_duration_min || 0} 分钟`;
         } else {
             document.getElementById('userResourceSection').style.display = 'none';
         }
@@ -1853,47 +1973,104 @@ class LearningBuddyApp {
             // 显示保存状态
             const saveBtn = document.getElementById('saveDetailBtn');
             saveBtn.disabled = true;
-            saveBtn.textContent = '保存中...';
+            saveBtn.textContent = this.isCreatingNew ? '创建中...' : '保存中...';
 
             // 收集表单数据
-            const updateData = this.collectRecordDetailData();
+            const formData = this.collectRecordDetailData();
+            console.log('发送到后端的数据:', formData);
             
-            // 调用API更新记录
-            const updatedRecord = await window.apiService.updateRecord(this.currentRecordId, updateData);
+            let result;
             
-            // 更新本地数据
-            this.currentRecordDetail = { ...this.currentRecordDetail, ...updatedRecord };
-            
-            // 同时更新记录列表中的对应记录
-            const recordIndex = this.records.findIndex(r => (r.record_id || r.id) == this.currentRecordId);
-            if (recordIndex !== -1) {
-                // 重新转换更新后的记录数据以确保格式一致
-                // 如果后端返回的标签为空，但我们知道刚添加了标签，使用当前详情数据中的标签
-                const updatedRecordWithTags = { ...updatedRecord };
-                if ((!updatedRecord.tags || updatedRecord.tags.length === 0) && 
-                    this.currentRecordDetail.tags && this.currentRecordDetail.tags.length > 0) {
-                    updatedRecordWithTags.tags = this.currentRecordDetail.tags.map(tag => tag.tag_name || tag);
+            if (this.isCreatingNew) {
+                // 创建新记录
+                result = await window.apiService.createRecord(formData);
+                
+                // 更新本地状态
+                this.currentRecordId = result.record_id;
+                this.currentRecordDetail = result;
+                this.isCreatingNew = false;
+                
+                // 添加到本地记录列表的开头
+                const convertedRecord = this.convertBackendRecord(result);
+                this.records.unshift(convertedRecord);
+                
+                // 显示成功消息
+                this.showSuccessMessage('记录创建成功！正在跳转到学习记录列表...');
+                
+                // 清除缓存（新记录会影响统计数据）
+                await this.clearCacheAfterRecordCreation();
+                
+                // 延迟跳转到学习记录列表
+                setTimeout(() => {
+                    this.showPage('records');
+                }, 1500); // 1.5秒后跳转，让用户看到成功消息
+                
+                // 切换到查看模式
+                this.setEditMode(false);
+                
+                // 更新页面标题和按钮
+                document.getElementById('recordDetailTitle').textContent = `记录详情 - ${result.title}`;
+                saveBtn.textContent = '保存修改';
+                
+                // 显示删除按钮
+                const deleteBtn = document.getElementById('deleteRecordBtn');
+                if (deleteBtn) {
+                    deleteBtn.style.display = 'inline-block';
                 }
                 
-                // 合并当前记录的基础数据和更新的数据
-                const fullUpdatedRecord = {
-                    ...this.records[recordIndex], // 保持现有的转换后数据
-                    ...updatedRecordWithTags,
-                    record_id: this.currentRecordId
-                };
-                const updatedRecordForList = this.convertBackendRecord(fullUpdatedRecord);
-                this.records[recordIndex] = updatedRecordForList;
-                
-                // 标记记录数据已更新
-                this.lastRecordUpdate = Date.now();
-                
-                // 如果在记录页面，立即重新渲染列表
-                if (this.currentPage === 'records') {
-                    this.renderAllRecords();
+                // 更新面包屑导航
+                const breadcrumb = document.querySelector('.breadcrumb');
+                if (breadcrumb) {
+                    breadcrumb.innerHTML = `
+                        <span class="breadcrumb-link" onclick="app.showPage('records')">学习记录</span>
+                        <span class="breadcrumb-separator">›</span>
+                        <span class="breadcrumb-current">记录详情</span>
+                    `;
                 }
+                
+            } else {
+                // 更新现有记录
+                result = await window.apiService.updateRecord(this.currentRecordId, formData);
+                
+                // 更新本地数据
+                this.currentRecordDetail = { ...this.currentRecordDetail, ...result };
+                
+                // 同时更新记录列表中的对应记录
+                const recordIndex = this.records.findIndex(r => (r.record_id || r.id) == this.currentRecordId);
+                if (recordIndex !== -1) {
+                    // 重新转换更新后的记录数据以确保格式一致
+                    const updatedRecordWithTags = { ...result };
+                    if ((!result.tags || result.tags.length === 0) && 
+                        this.currentRecordDetail.tags && this.currentRecordDetail.tags.length > 0) {
+                        updatedRecordWithTags.tags = this.currentRecordDetail.tags.map(tag => tag.tag_name || tag);
+                    }
+                    
+                    // 合并当前记录的基础数据和更新的数据
+                    const fullUpdatedRecord = {
+                        ...this.records[recordIndex], // 保持现有的转换后数据
+                        ...updatedRecordWithTags,
+                        record_id: this.currentRecordId
+                    };
+                    const updatedRecordForList = this.convertBackendRecord(fullUpdatedRecord);
+                    this.records[recordIndex] = updatedRecordForList;
+                    
+                    // 标记记录数据已更新
+                    this.lastRecordUpdate = Date.now();
+                    
+                    // 如果在记录页面，立即重新渲染列表
+                    if (this.currentPage === 'records') {
+                        this.renderAllRecords();
+                    }
+                }
+                
+                // 显示成功消息
+                this.showSuccessMessage('记录更新成功！');
+                
+                // 切换回查看模式
+                this.setEditMode(false);
             }
             
-            // 仅刷新汇总数据，不重新加载记录列表（避免覆盖已更新的本地数据）
+            // 刷新汇总数据（更新统计信息）
             Promise.allSettled([
                 window.apiService.getDashboardSummary(7),
                 window.apiService.getDashboardSummary(30)
@@ -1903,11 +2080,6 @@ class LearningBuddyApp {
                 this.dashboardSummary = this.weekSummary || this.monthSummary;
                 this.updateDashboard();
             });
-            
-            // 退出编辑模式
-            this.setEditMode(false);
-            
-            this.showSuccessMessage('记录更新成功！');
 
         } catch (error) {
             console.error('❌ 保存记录详情失败:', error);
@@ -1916,7 +2088,7 @@ class LearningBuddyApp {
             // 恢复按钮状态
             const saveBtn = document.getElementById('saveDetailBtn');
             saveBtn.disabled = false;
-            saveBtn.textContent = '保存修改';
+            saveBtn.textContent = this.isCreatingNew ? '创建记录' : '保存修改';
         }
     }
 
@@ -1932,36 +2104,66 @@ class LearningBuddyApp {
             occurredAtISO = localDate.toISOString();
         }
         
+        // 获取评分值并确保它们是有效的整数或null
+        const difficulty = this.getRatingValue('recordDetailDifficulty');
+        const focus = this.getRatingValue('recordDetailFocus');
+        const energy = this.getRatingValue('recordDetailEnergy');
+        
         const data = {
             // 记录基本信息
-            title: document.getElementById('recordDetailTitleField').value,
+            title: document.getElementById('recordDetailTitleField').value.trim() || '未命名记录',
             form_type: document.getElementById('recordDetailFormType').value,
             occurred_at: occurredAtISO,
-            duration_min: parseInt(document.getElementById('recordDetailDuration').value) || null,
-            difficulty: this.getRatingValue('recordDetailDifficulty'),
-            focus: this.getRatingValue('recordDetailFocus'),
-            energy: this.getRatingValue('recordDetailEnergy'),
-            mood: document.getElementById('recordDetailMood').value,
-            body_md: document.getElementById('recordDetailBodyMd').value
+            duration_min: parseInt(document.getElementById('recordDetailDuration').value) || 0,
+            difficulty: difficulty > 0 ? difficulty : null,
+            focus: focus > 0 ? focus : null,
+            energy: energy > 0 ? energy : null,
+            mood: document.getElementById('recordDetailMood').value.trim() || null,
+            body_md: document.getElementById('recordDetailBodyMd').value.trim() || null
         };
         
         // 资源信息（如果存在资源部分）
         const resourceSection = document.getElementById('resourceSection');
         if (resourceSection && resourceSection.style.display !== 'none') {
-            data.resource_title = document.getElementById('resourceDetailTitle').value || null;
-            data.resource_type = document.getElementById('resourceDetailType').value || null;
-            data.resource_author = document.getElementById('resourceDetailAuthor').value || null;
-            data.resource_url = document.getElementById('resourceDetailUrl').value || null;
-            data.resource_platform = document.getElementById('resourceDetailPlatform').value || null;
-            // 特别处理ISBN - 空字符串转换为null以避免唯一约束冲突
-            data.resource_isbn = document.getElementById('resourceDetailIsbn').value.trim() || null;
-            data.resource_description = document.getElementById('resourceDetailDescription').value || null;
+            // 只有当标题或类型不为空时才发送资源数据
+            const resourceTitle = document.getElementById('resourceDetailTitle').value.trim();
+            const resourceType = document.getElementById('resourceDetailType').value;
+            
+            if (resourceTitle || resourceType) {
+                data.resource_title = resourceTitle || null;
+                data.resource_type = resourceType || null;
+                data.resource_author = document.getElementById('resourceDetailAuthor').value.trim() || null;
+                data.resource_url = document.getElementById('resourceDetailUrl').value.trim() || null;
+                data.resource_platform = document.getElementById('resourceDetailPlatform').value.trim() || null;
+                // 特别处理ISBN - 空字符串转换为null以避免唯一约束冲突
+                data.resource_isbn = document.getElementById('resourceDetailIsbn').value.trim() || null;
+                data.resource_description = document.getElementById('resourceDetailDescription').value.trim() || null;
+            }
         }
         
-        // 标签信息
+        // 标签信息（确保转换为字符串数组）
         if (this.currentRecordDetail && this.currentRecordDetail.tags) {
-            data.tags = this.currentRecordDetail.tags;
+            data.tags = this.currentRecordDetail.tags.map(tag => {
+                if (typeof tag === 'string') {
+                    return tag;
+                } else if (tag && tag.tag_name) {
+                    return tag.tag_name;
+                } else if (tag && tag.name) {
+                    return tag.name;
+                } else {
+                    return String(tag);
+                }
+            }).filter(Boolean); // 过滤掉空值
         }
+        
+        console.log('收集的数据:', data);
+        
+        // 添加临时的debug函数到window对象
+        window.debugRecordData = () => {
+            console.log('=== 调试记录数据 ===');
+            console.log('收集的数据:', JSON.stringify(data, null, 2));
+            return data;
+        };
         
         return data;
     }

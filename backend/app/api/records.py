@@ -27,6 +27,7 @@ async def test_supabase_connection():
             "message": f"Supabase connection failed: {str(e)}"
         }
 
+
 @router.get("/debug/current-user", response_model=dict)
 async def debug_current_user(current_user_id: str = Depends(get_current_user_id)):
     """调试：显示当前用户ID"""
@@ -161,8 +162,21 @@ async def create_record(
         
         resource_id = record_data.resource_id
         
-        # 如果没有提供resource_id，则创建或查找资源
-        if not resource_id:
+        # 如果没有提供resource_id，但有资源信息，则创建或查找资源
+        if not resource_id and hasattr(record_data, 'resource_title') and record_data.resource_title:
+            resource_id = await create_or_find_resource(
+                client, 
+                title=record_data.resource_title,
+                resource_type=record_data.resource_type or record_data.form_type.value,
+                created_by=current_user_id,
+                author=getattr(record_data, 'resource_author', None),
+                url=getattr(record_data, 'resource_url', None),
+                platform=getattr(record_data, 'resource_platform', None),
+                isbn=getattr(record_data, 'resource_isbn', None),
+                description=getattr(record_data, 'resource_description', None)
+            )
+        elif not resource_id:
+            # 如果没有资源信息，使用记录标题创建简单资源
             resource_id = await create_or_find_resource(
                 client, 
                 title=record_data.title,
@@ -243,7 +257,9 @@ async def create_record(
         )
 
 
-async def create_or_find_resource(client, title: str, resource_type: str, created_by: str):
+async def create_or_find_resource(client, title: str, resource_type: str, created_by: str, 
+                                author: str = None, url: str = None, platform: str = None, 
+                                isbn: str = None, description: str = None):
     """创建或查找资源"""
     try:
         # 首先尝试通过标题查找现有资源
@@ -258,6 +274,18 @@ async def create_or_find_resource(client, title: str, resource_type: str, create
             "title": title,
             "created_by": created_by
         }
+        
+        # 添加可选字段（只有非空值才添加）
+        if author:
+            resource_data["author"] = author
+        if url:
+            resource_data["url"] = url
+        if platform:
+            resource_data["platform"] = platform
+        if isbn:
+            resource_data["isbn"] = isbn
+        if description:
+            resource_data["description"] = description
         
         create_response = client.table('resources').insert(resource_data).execute()
         

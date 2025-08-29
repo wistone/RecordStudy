@@ -35,6 +35,15 @@ class RecordCreate(BaseModel):
     privacy: PrivacyLevel = PrivacyLevel.private
     assets: Optional[Dict[str, Any]] = None
     tags: Optional[List[str]] = None
+    
+    # Resource fields for creating new resources
+    resource_title: Optional[str] = Field(None, max_length=500)
+    resource_type: Optional[str] = Field(None, max_length=100) 
+    resource_author: Optional[str] = Field(None, max_length=200)
+    resource_url: Optional[str] = Field(None, max_length=2000)
+    resource_platform: Optional[str] = Field(None, max_length=100)
+    resource_isbn: Optional[str] = Field(None, max_length=20)
+    resource_description: Optional[str] = Field(None, max_length=2000)
 
 class RecordResponse(BaseModel):
     record_id: int
