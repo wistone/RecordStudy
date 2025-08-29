@@ -8,7 +8,7 @@
     <style>
         /* 登录页面特定样式 */
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 50%, #cbd5e1 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -17,46 +17,55 @@
         }
 
         .login-container {
-            background: var(--bg-primary);
+            background: #ffffff;
             border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-lg);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
             width: 100%;
-            max-width: 400px;
-            padding: 40px;
+            max-width: 420px;
+            padding: 48px 40px;
             text-align: center;
+            border: 1px solid rgba(226, 232, 240, 0.6);
         }
 
         .login-header {
-            margin-bottom: 32px;
+            margin-bottom: 40px;
         }
 
         .login-logo {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 12px;
-            margin-bottom: 16px;
+            gap: 16px;
+            margin-bottom: 20px;
         }
 
         .login-logo svg {
-            color: var(--primary-color);
+            color: #2563eb;
+            background: rgba(37, 99, 235, 0.15);
+            padding: 8px;
+            border-radius: var(--radius-md);
         }
 
         .login-title {
-            font-size: 24px;
+            font-size: 28px;
             font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 8px;
+            background: linear-gradient(135deg, #2563eb, #10b981);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin: 0;
         }
 
         .login-subtitle {
-            font-size: 14px;
-            color: var(--text-secondary);
+            font-size: 15px;
+            color: #64748b;
+            margin-top: 8px;
+            font-weight: 400;
         }
 
         .auth-tabs {
             display: flex;
-            background: var(--bg-tertiary);
+            background: #f1f5f9;
             border-radius: var(--radius-md);
             padding: 4px;
             margin-bottom: 24px;
@@ -69,16 +78,16 @@
             background: none;
             font-size: 14px;
             font-weight: 500;
-            color: var(--text-secondary);
+            color: #64748b;
             border-radius: var(--radius-sm);
             cursor: pointer;
             transition: all 0.2s;
         }
 
         .auth-tab.active {
-            background: var(--bg-primary);
-            color: var(--primary-color);
-            box-shadow: var(--shadow-sm);
+            background: #ffffff;
+            color: #2563eb;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
         }
 
         .auth-form {
@@ -99,24 +108,27 @@
             display: block;
             font-size: 14px;
             font-weight: 500;
-            color: var(--text-primary);
+            color: #1e293b;
             margin-bottom: 8px;
         }
 
         .form-input {
             width: 100%;
-            padding: 12px 16px;
-            border: 2px solid var(--border-color);
+            padding: 14px 16px;
+            border: 1px solid #d1d5db;
             border-radius: var(--radius-md);
-            font-size: 14px;
-            transition: all 0.2s;
-            background: var(--bg-primary);
+            font-size: 15px;
+            transition: all 0.2s ease;
+            background: #ffffff;
+            font-family: inherit;
+            color: #1e293b;
         }
 
         .form-input:focus {
             outline: none;
-            border-color: var(--primary-color);
+            border-color: #2563eb;
             box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+            background: rgba(37, 99, 235, 0.02);
         }
 
         .form-input.error {
@@ -145,7 +157,7 @@
 
         .strength-bar {
             height: 4px;
-            background: var(--bg-tertiary);
+            background: #f1f5f9;
             border-radius: 2px;
             overflow: hidden;
             margin-bottom: 4px;
@@ -159,30 +171,32 @@
 
         .strength-text {
             font-size: 12px;
-            color: var(--text-secondary);
+            color: #64748b;
         }
 
         .auth-button {
             width: 100%;
-            padding: 14px;
+            padding: 16px 20px;
             border: none;
             border-radius: var(--radius-md);
-            background: var(--primary-color);
+            background: #2563eb;
             color: white;
             font-size: 15px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.2s ease;
             margin-bottom: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
 
         .auth-button:hover:not(:disabled) {
-            background: var(--primary-dark);
+            background: #1d4ed8;
             transform: translateY(-1px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         }
 
         .auth-button:disabled {
-            background: var(--text-tertiary);
+            background: #9ca3af;
             cursor: not-allowed;
             transform: none;
         }
@@ -212,20 +226,6 @@
             100% { transform: rotate(360deg); }
         }
 
-        .forgot-password {
-            text-align: center;
-            margin-top: 16px;
-        }
-
-        .forgot-password a {
-            color: var(--primary-color);
-            text-decoration: none;
-            font-size: 14px;
-        }
-
-        .forgot-password a:hover {
-            text-decoration: underline;
-        }
 
         .divider {
             margin: 24px 0;
@@ -240,45 +240,55 @@
             left: 0;
             right: 0;
             height: 1px;
-            background: var(--border-color);
+            background: #d1d5db;
         }
 
         .divider span {
-            background: var(--bg-primary);
-            color: var(--text-secondary);
+            background: #ffffff;
+            color: #64748b;
             padding: 0 16px;
             font-size: 14px;
         }
 
         .demo-notice {
-            background: rgba(37, 99, 235, 0.1);
-            border: 1px solid rgba(37, 99, 235, 0.2);
-            border-radius: var(--radius-md);
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(16, 185, 129, 0.08));
+            border: 1px solid rgba(37, 99, 235, 0.25);
+            border-radius: var(--radius-lg);
             padding: 16px;
-            margin-top: 20px;
+            margin-top: 24px;
             text-align: left;
         }
 
         .demo-notice h4 {
             font-size: 14px;
             font-weight: 600;
-            color: var(--primary-color);
+            color: #2563eb;
             margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .demo-notice h4::before {
+            content: "🚀";
+            font-size: 16px;
         }
 
         .demo-notice p {
-            font-size: 13px;
-            color: var(--text-secondary);
+            font-size: 12px;
+            color: #475569;
             line-height: 1.5;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
 
         .demo-notice code {
-            background: rgba(37, 99, 235, 0.1);
+            background: rgba(37, 99, 235, 0.15);
             padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-family: 'Courier New', monospace;
+            border-radius: var(--radius-sm);
+            font-size: 11px;
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+            font-weight: 500;
+            color: #2563eb;
         }
 
         .success-message {
@@ -360,9 +370,6 @@
                 </div>
             </button>
 
-            <div class="forgot-password">
-                <a href="#" id="forgotPasswordLink">忘记密码？</a>
-            </div>
         </form>
 
         <!-- Register Form -->
@@ -484,11 +491,6 @@
                 // Real-time validation
                 this.setupRealTimeValidation();
 
-                // Forgot password
-                document.getElementById('forgotPasswordLink').addEventListener('click', (e) => {
-                    e.preventDefault();
-                    this.handleForgotPassword();
-                });
             }
 
             switchTab(tab) {
@@ -701,31 +703,6 @@
                 });
             }
 
-            async handleForgotPassword() {
-                const email = document.getElementById('loginEmail').value.trim();
-                
-                if (!email) {
-                    this.showError('loginEmailError', '请先输入邮箱地址');
-                    return;
-                }
-
-                if (!authService.validateEmail(email)) {
-                    this.showError('loginEmailError', '请输入有效的邮箱地址');
-                    return;
-                }
-
-                try {
-                    const { error } = await authService.resetPassword(email);
-                    
-                    if (error) {
-                        this.showError('loginEmailError', '发送重置邮件失败，请稍后重试');
-                    } else {
-                        this.showSuccess('密码重置邮件已发送，请检查您的邮箱');
-                    }
-                } catch (error) {
-                    this.showError('loginEmailError', '发送重置邮件失败，请稍后重试');
-                }
-            }
 
             showError(fieldId, message) {
                 const errorElement = document.getElementById(fieldId);

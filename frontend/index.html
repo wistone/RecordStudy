@@ -831,19 +831,53 @@
             }
         });
         
-        async function handleLogout() {
-            if (confirm('确定要退出登录吗？')) {
-                try {
-                    const { error } = await authService.signOut();
-                    if (error) {
-                        alert('退出登录失败，请重试');
-                    } else {
-                        // 成功登出，会自动跳转到登录页面
-                        window.location.href = 'login.html';
-                    }
-                } catch (error) {
+        function handleLogout() {
+            showLogoutConfirm();
+        }
+
+        function showLogoutConfirm() {
+            const confirmModal = document.createElement('div');
+            confirmModal.className = 'logout-confirm-modal';
+            confirmModal.innerHTML = `
+                <div class="logout-confirm-overlay">
+                    <div class="logout-confirm-content">
+                        <div class="logout-confirm-header">
+                            <h3>确定要退出登录吗？</h3>
+                        </div>
+                        <div class="logout-confirm-body">
+                        </div>
+                        <div class="logout-confirm-actions">
+                            <button class="btn btn-secondary" onclick="closeLogoutConfirm()">取消</button>
+                            <button class="btn-logout-confirm" onclick="executeLogout()">确定</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(confirmModal);
+            // 添加动画效果
+            setTimeout(() => confirmModal.classList.add('active'), 10);
+        }
+
+        function closeLogoutConfirm() {
+            const modal = document.querySelector('.logout-confirm-modal');
+            if (modal) {
+                modal.classList.remove('active');
+                setTimeout(() => modal.remove(), 300);
+            }
+        }
+
+        async function executeLogout() {
+            try {
+                const { error } = await authService.signOut();
+                if (error) {
                     alert('退出登录失败，请重试');
+                } else {
+                    // 成功登出，会自动跳转到登录页面
+                    window.location.href = 'login.html';
                 }
+            } catch (error) {
+                alert('退出登录失败，请重试');
             }
         }
         
