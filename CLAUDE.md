@@ -64,101 +64,15 @@ CORS_ORIGINS=http://localhost:3000,http://localhost:3001,http://localhost:8000
 
 **Note**: `DATABASE_URL` is no longer used - we use Supabase client SDK instead of direct PostgreSQL connections.
 
-## Database Schema & Migration
-
-### Schema Files
-- `sql/001-init.sql` - Base tables and types
-- `sql/002-fix-profiles-rls.sql` - RLS policies
-- `sql/003-demo-data.sql` - Demo user data
-
-### Key Tables
-- `auth.users` - Supabase managed user authentication
-- `public.profiles` - Extended user profiles
-- `public.records` - Learning records with comprehensive metadata
-- `public.resources` - Shared learning resources
-- `public.user_resources` - User-specific resource relationships
-- `public.tags` - Global tag system for categorization
-- `public.resource_tags` - Many-to-many relationship between resources and tags
-
-### Demo User
+## Demo User
 - **Email**: demo@example.com
 - **Password**: abc123123
 - **User ID**: 6d45fa47-7935-4673-ac25-bc39ca3f3481
 - **Records**: 25+ sample learning entries with tags and resources
 
-## Application Architecture
-
-### Frontend Structure (`frontend/`)
-```
-frontend/
-├── index.html          # Main SPA entry point
-├── login.html          # Authentication page
-├── js/
-│   ├── env.js         # Environment configuration
-│   ├── auth.js        # Supabase authentication service
-│   ├── api-service.js # API communication layer
-│   └── app.js         # Main application logic
-└── styles/
-    └── main.css       # Complete styling
-```
-
-### Backend Structure (`backend/`)
-```
-backend/
-├── app/
-│   ├── main.py        # FastAPI application entry
-│   ├── api/
-│   │   ├── __init__.py
-│   │   ├── records.py # Learning records API
-│   │   ├── resources.py
-│   │   └── stats.py
-│   ├── core/
-│   │   ├── config.py  # Settings and configuration
-│   │   ├── auth.py    # JWT authentication middleware
-│   │   └── database.py # Database connection (legacy)
-│   ├── models/        # Pydantic models (legacy)
-│   └── schemas/       # API schemas
-└── requirements.txt   # Python dependencies
-```
-
-## Key Components
-
-### Authentication Flow
-1. **Frontend**: User login via Supabase Auth
-2. **Token**: JWT access token stored in session
-3. **API Calls**: Token sent in Authorization header
-4. **Backend**: Token validated via Supabase Auth API
-5. **User ID**: Extracted for data filtering
-
-### API Endpoints (`/api/v1/`)
-#### Records API
-- `GET /records` - Get user's learning records with tags
-- `POST /records` - Create new record with automatic resource creation
-- `PUT /records/{id}` - Update record with tag management
-- `DELETE /records/{id}` - Delete record
-- `GET /records/{id}` - Get single record with full details
-- `GET /records/test` - Connection test
-- `GET /records/debug/current-user` - Debug user info
-
-#### Summary API
-- `GET /summaries/dashboard` - Dashboard analytics with caching
-- `GET /summaries/recent-records` - Recent records summary
-
-### Data Flow
-```
-Browser → Frontend (3001) → API Call → Backend (8000) → Supabase Client → PostgreSQL
-```
-
-## Development Patterns
+## Key Development Patterns
 
 ### Database Access Pattern
-**❌ Old Pattern (Removed)**:
-```python
-# Direct PostgreSQL with SQLAlchemy
-from sqlalchemy.orm import Session
-records = db.query(Record).filter_by(user_id=user_id).all()
-```
-
 **✅ Current Pattern**:
 ```python
 # Supabase Client SDK
@@ -195,29 +109,6 @@ const token = await this.getAuthToken();
 fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
 ```
 
-### Error Handling
-- **Frontend**: User-friendly Chinese error messages
-- **Backend**: HTTP status codes with detailed error responses
-- **Authentication**: Automatic redirect to login on 401 errors
-
-## Testing & Debugging
-
-### Health Checks
-- Backend: `http://localhost:8000/health`
-- Supabase: `http://localhost:8000/api/v1/records/test`
-- User Debug: `http://localhost:8000/api/v1/records/debug/current-user`
-
-### Demo Data Verification
-```bash
-# Check demo user exists and has records
-venv/bin/python -c "
-from supabase import create_client
-client = create_client('SUPABASE_URL', 'SUPABASE_SERVICE_KEY')
-records = client.table('records').select('*').eq('user_id', '6d45fa47-7935-4673-ac25-bc39ca3f3481').execute()
-print(f'Demo user has {len(records.data)} records')
-"
-```
-
 ## Development Guidelines
 
 ### Authentication Requirements
@@ -240,38 +131,7 @@ print(f'Demo user has {len(records.data)} records')
 - Validate user permissions via JWT middleware
 - Return consistent JSON responses with proper HTTP status codes
 
-### Deployment Considerations
-- Frontend can be served from any static file server
-- Backend requires Python environment with Supabase dependencies
-- Both services need access to same Supabase project credentials
-
-## Troubleshooting
-
-### Common Issues
-1. **"queryParams already declared"** - JavaScript syntax error from duplicate variable declarations
-2. **"window.apiService undefined"** - Frontend script loading order or syntax errors
-3. **"No route to host"** - Network connectivity issues with direct PostgreSQL (use Supabase client)
-4. **User ID mismatch** - Demo user ID in database doesn't match authenticated user ID
-5. **Tags not saving** - Records without resource_id couldn't save tags (fixed with virtual resource creation)
-6. **404 on delete but record deleted** - Idempotent deletion behavior (treated as success)
-7. **Tags not showing after save** - Fixed data synchronization between frontend and backend
-
-### Debug Commands
-```javascript
-// Check current user in browser console
-(async () => {
-  const response = await window.apiService.request('/records/debug/current-user');
-  console.log('Current user info:', response);
-})();
-```
-
-### Cache Issues
-When JavaScript changes don't take effect:
-1. Update version numbers in HTML script tags
-2. Hard refresh browser (Cmd+Shift+R / Ctrl+Shift+R)
-3. Clear browser cache and reload
-
-## Success Metrics & Features
+## Key Features & Improvements
 
 ### Core Functionality
 - ✅ User registration and authentication
@@ -284,35 +144,25 @@ When JavaScript changes don't take effect:
 - ✅ Responsive homepage with clickable records
 - ✅ Smart caching for dashboard summaries
 
-### Performance Targets
-- Record creation time ≤ 10 seconds
-- Dashboard load time ≤ 3 seconds
-- API response time ≤ 500ms
-- Daily Active Records per user ≥ 2
-
-## Recent Fixes & Improvements
-
-### Tag System Overhaul (Latest)
-- **Problem**: Records without `resource_id` couldn't save tags due to database schema constraints
-- **Solution**: Automatic virtual resource creation when tags are added to resource-less records
-- **Impact**: Now all records can have tags, improving categorization and searchability
-- **Files Modified**: `backend/app/api/records.py` (update_record_tags function)
-
-### UI/UX Enhancements
-- **Detail Page Layout**: Redesigned to three-column layout (basic info + notes + tags/resources)
-- **Action Button Consolidation**: Moved edit/delete/cancel buttons to top header for consistency
-- **Homepage Improvements**: Added dates, tags, and clickable records with action buttons
-- **Responsive Design**: Records maintain proper layout and buttons after filtering
-
-### Data Integrity Fixes
-- **Delete Behavior**: Fixed 404 errors on successful deletions (idempotent behavior)
-- **Tag Synchronization**: Fixed tags not showing after save/return to list
-- **Time Zone Handling**: Proper UTC storage with local display conversion
-- **Database Constraints**: Handle null values properly (ISBN, etc.)
+### Recent UI/UX Enhancements
+- **Detailed Record Creation**: Added "前往详细记录" link in quick record modal with form data transfer
+- **Resource Creation Fields**: Integrated resource creation directly in detailed record form
+- **Action Button Consolidation**: Moved edit/delete/cancel buttons to page header for consistency
+- **Enhanced Record List**: Added dates, tags, and improved clickable record cards
+- **Modal Styling Improvements**: Unified logout modal design and removed divider lines
+- **Login Page Redesign**: Unified color scheme with main app, enhanced contrast, removed forgot password
+- **Record Height Consistency**: Fixed record list items to maintain equal height during filtering
+- **Icon Integration**: Added study.ico favicon across all HTML pages for brand consistency
 
 ### Performance Optimizations
 - **Smart Caching**: Dashboard summaries cached for 5 minutes with automatic invalidation
 - **API Efficiency**: Optimized record queries to include tag information in single request
 - **Frontend State Management**: Improved data synchronization between views
+
+### Data Integrity Fixes
+- **Tag System Overhaul**: Automatic virtual resource creation enables all records to have tags
+- **Delete Behavior**: Fixed 404 errors on successful deletions (idempotent behavior)
+- **Tag Synchronization**: Fixed tags not showing after save/return to list
+- **Time Zone Handling**: Proper UTC storage with local display conversion
 
 The application is now production-ready with secure authentication, reliable data persistence, comprehensive tag management, and scalable architecture suitable for real users.
