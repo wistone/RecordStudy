@@ -6,6 +6,20 @@ from app.schemas.record import RecordCreate, RecordUpdate
 
 router = APIRouter()
 
+# Global utility function for resource type validation
+def get_valid_resource_type(form_type_value, fallback_type=None):
+    """Convert any form_type to a valid resource_type enum value"""
+    valid_types = {
+        'video', 'podcast', 'book', 'course', 'article', 
+        'paper', 'exercise', 'project', 'workout', 'other'
+    }
+    if form_type_value and form_type_value in valid_types:
+        return form_type_value
+    elif fallback_type and fallback_type in valid_types:
+        return fallback_type
+    else:
+        return 'other'  # Default fallback for custom types
+
 @router.get("/test", response_model=dict)
 async def test_supabase_connection():
     """测试Supabase连接"""
@@ -160,14 +174,23 @@ async def create_record(
         
         client = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
         
-        resource_id = record_data.resource_id
+        # Validate form_type against user's form types
+        form_type_check = client.table('user_form_types').select('type_id').eq('user_id', current_user_id).eq('type_code', record_data.form_type).execute()
+        if not form_type_check.data:
+            raise HTTPException(status_code=400, detail=f"Invalid form_type '{record_data.form_type}' for user")
         
+        resource_id = record_data.resource_id
+
         # 如果没有提供resource_id，但有资源信息，则创建或查找资源
         if not resource_id and hasattr(record_data, 'resource_title') and record_data.resource_title:
+            resource_type = get_valid_resource_type(
+                record_data.resource_type or record_data.form_type, 
+                record_data.resource_type
+            )
             resource_id = await create_or_find_resource(
                 client, 
                 title=record_data.resource_title,
-                resource_type=record_data.resource_type or record_data.form_type.value,
+                resource_type=resource_type,
                 created_by=current_user_id,
                 author=getattr(record_data, 'resource_author', None),
                 url=getattr(record_data, 'resource_url', None),
@@ -177,10 +200,11 @@ async def create_record(
             )
         elif not resource_id:
             # 如果没有资源信息，使用记录标题创建简单资源
+            resource_type = get_valid_resource_type(record_data.form_type)
             resource_id = await create_or_find_resource(
                 client, 
                 title=record_data.title,
-                resource_type=record_data.form_type.value,
+                resource_type=resource_type,
                 created_by=current_user_id
             )
         
@@ -188,7 +212,7 @@ async def create_record(
         insert_data = {
             "user_id": current_user_id,
             "resource_id": resource_id,
-            "form_type": record_data.form_type.value,
+            "form_type": record_data.form_type,
             "title": record_data.title,
             "body_md": record_data.body_md,
             "occurred_at": (record_data.occurred_at or datetime.utcnow()).isoformat(),
@@ -262,15 +286,18 @@ async def create_or_find_resource(client, title: str, resource_type: str, create
                                 isbn: str = None, description: str = None):
     """创建或查找资源"""
     try:
+        # 确保resource_type是有效的枚举值（对自定义类型使用"other"）
+        validated_resource_type = get_valid_resource_type(resource_type)
+        
         # 首先尝试通过标题查找现有资源
-        existing_response = client.table('resources').select('resource_id').eq('title', title).eq('type', resource_type).limit(1).execute()
+        existing_response = client.table('resources').select('resource_id').eq('title', title).eq('type', validated_resource_type).limit(1).execute()
         
         if existing_response.data:
             return existing_response.data[0]['resource_id']
         
         # 如果不存在，创建新资源
         resource_data = {
-            "type": resource_type,
+            "type": validated_resource_type,
             "title": title,
             "created_by": created_by
         }
@@ -626,9 +653,11 @@ async def update_record_tags(client, resource_id: int, tags_data: list, user_id:
             
         record_data = record_response.data[0]
         
-        # 创建虚拟资源
+        # 创建虚拟资源（确保使用有效的resource_type）
+        validated_resource_type = get_valid_resource_type(record_data['form_type'])
+        
         resource_data = {
-            'type': record_data['form_type'],
+            'type': validated_resource_type,
             'title': record_data['title'],
             'created_by': user_id
         }

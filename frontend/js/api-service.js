@@ -344,6 +344,80 @@ class APIService {
             throw error;
         }
     }
+
+    // 获取用户的学习形式类型
+    async getFormTypes() {
+        const url = `${this.baseURL}/form-types/form-types`;
+        try {
+            const token = await this.getAuthToken();
+            const response = await fetch(url, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+            }
+            
+            return await response.json();
+        } catch (error) {
+            console.error(`❌ 获取学习形式失败: ${url}`, error);
+            throw error;
+        }
+    }
+
+    // 创建自定义学习形式
+    async createFormType(formTypeData) {
+        const url = `${this.baseURL}/form-types/form-types`;
+        try {
+            const token = await this.getAuthToken();
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formTypeData)
+            });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP ${response.status}: ${errorText}`);
+            }
+            
+            return await response.json();
+        } catch (error) {
+            console.error(`❌ 创建学习形式失败: ${url}`, error);
+            throw error;
+        }
+    }
+
+    // 删除自定义学习形式
+    async deleteFormType(typeId) {
+        const url = `${this.baseURL}/form-types/form-types/${typeId}`;
+        try {
+            const token = await this.getAuthToken();
+            const response = await fetch(url, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP ${response.status}: ${errorText}`);
+            }
+            
+            return await response.json();
+        } catch (error) {
+            console.error(`❌ 删除学习形式失败: ${url}`, error);
+            throw error;
+        }
+    }
 }
 
 // 创建全局API服务实例

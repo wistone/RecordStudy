@@ -808,6 +808,109 @@ body {
     cursor: not-allowed;
 }
 
+/* Custom Type Modal */
+.custom-type-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.custom-type-modal.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.custom-type-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(15, 23, 42, 0.5);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.custom-type-content {
+    background: var(--bg-primary);
+    border-radius: var(--radius-lg);
+    width: 100%;
+    max-width: 400px;
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    transform: scale(0.95);
+    transition: transform 0.3s ease;
+}
+
+.custom-type-modal.active .custom-type-content {
+    transform: scale(1);
+}
+
+.custom-type-header {
+    padding: 24px 24px 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.custom-type-header h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.custom-type-body {
+    padding: 24px;
+}
+
+.custom-type-body label {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.custom-type-input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    font-size: 16px;
+    transition: all 0.2s ease;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.custom-type-input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.custom-type-input::placeholder {
+    color: var(--text-tertiary);
+}
+
+.custom-type-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 16px 24px 24px;
+    border-top: 1px solid var(--border-color);
+}
+
+.custom-type-actions .btn {
+    min-width: 80px;
+}
+
 /* 记录详情页面样式 */
 .breadcrumb {
     margin-bottom: 24px;
@@ -1350,6 +1453,19 @@ body {
 .type-btn.selected {
     border-color: var(--primary-color);
     background: rgba(37, 99, 235, 0.1);
+    color: var(--primary-color);
+}
+
+.type-btn.add-type-btn {
+    border: 2px dashed var(--border-color);
+    background: transparent;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.type-btn.add-type-btn:hover {
+    border-color: var(--primary-color);
+    background: rgba(37, 99, 235, 0.05);
     color: var(--primary-color);
 }
 

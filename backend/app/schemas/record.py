@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from enum import Enum
@@ -22,7 +22,7 @@ class PrivacyLevel(str, Enum):
 
 class RecordCreate(BaseModel):
     resource_id: Optional[int] = None
-    form_type: ResourceType
+    form_type: str = Field(..., min_length=1, max_length=50, description="Form type code - can be default or custom")
     title: str = Field(..., min_length=1, max_length=500)
     body_md: Optional[str] = None
     occurred_at: Optional[datetime] = None

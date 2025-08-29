@@ -9,6 +9,7 @@ class LearningBuddyApp {
         this.currentPeriod = 'week'; // week, month, year
         this.isSubmitting = false; // 防止重复提交
         this.isCreatingNew = false; // 标记是否正在创建新记录
+        this.formTypes = []; // 用户的学习形式类型
         this.init();
     }
 
@@ -19,6 +20,7 @@ class LearningBuddyApp {
         // }
         
         await this.loadData();
+        await this.loadFormTypes();
         this.setupEventListeners();
         this.updateDashboard();
         this.renderRecentRecords();
@@ -68,6 +70,90 @@ class LearningBuddyApp {
         }
     }
     
+    // Load user's form types (default + custom)
+    async loadFormTypes() {
+        try {
+            // Add a small delay to ensure authentication is ready
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            this.formTypes = await window.apiService.getFormTypes();
+            console.log('📝 已加载学习形式类型:', this.formTypes.length);
+            
+            // Refresh the UI to show correct icons
+            this.refreshFormTypeDisplay();
+        } catch (error) {
+            console.error('❌ 加载学习形式类型失败:', error);
+            
+            // If it's an authentication error, try again after a delay
+            if (error.message.includes('401') || error.message.includes('authentication') || error.message.includes('未登录')) {
+                console.log('🔄 认证问题，2秒后重试加载学习形式类型...');
+                setTimeout(async () => {
+                    try {
+                        this.formTypes = await window.apiService.getFormTypes();
+                        console.log('📝 重试成功！已加载学习形式类型:', this.formTypes.length);
+                        this.refreshFormTypeDisplay();
+                    } catch (retryError) {
+                        console.error('❌ 重试仍然失败:', retryError);
+                        // Use fallback default types
+                        this.formTypes = [
+                            {type_code: 'video', type_name: '视频', emoji: '📹', is_default: true, display_order: 1},
+                            {type_code: 'podcast', type_name: '播客', emoji: '🎙️', is_default: true, display_order: 2},
+                            {type_code: 'book', type_name: '书籍', emoji: '📚', is_default: true, display_order: 3},
+                            {type_code: 'course', type_name: '课程', emoji: '🎓', is_default: true, display_order: 4},
+                            {type_code: 'article', type_name: '文章', emoji: '📄', is_default: true, display_order: 5},
+                            {type_code: 'exercise', type_name: '题目', emoji: '✏️', is_default: true, display_order: 6},
+                            {type_code: 'project', type_name: '项目', emoji: '💻', is_default: true, display_order: 7},
+                            {type_code: 'workout', type_name: '运动', emoji: '🏃', is_default: true, display_order: 8},
+                            {type_code: 'paper', type_name: '论文', emoji: '📑', is_default: true, display_order: 9},
+                            {type_code: 'other', type_name: '其他', emoji: '📌', is_default: true, display_order: 10}
+                        ];
+                        this.refreshFormTypeDisplay();
+                    }
+                }, 2000);
+                return;
+            }
+            
+            // Use fallback default types if API fails
+            console.log('🔄 使用默认学习形式类型作为后备');
+            this.formTypes = [
+                {type_code: 'video', type_name: '视频', emoji: '📹', is_default: true, display_order: 1},
+                {type_code: 'podcast', type_name: '播客', emoji: '🎙️', is_default: true, display_order: 2},
+                {type_code: 'book', type_name: '书籍', emoji: '📚', is_default: true, display_order: 3},
+                {type_code: 'course', type_name: '课程', emoji: '🎓', is_default: true, display_order: 4},
+                {type_code: 'article', type_name: '文章', emoji: '📄', is_default: true, display_order: 5},
+                {type_code: 'exercise', type_name: '题目', emoji: '✏️', is_default: true, display_order: 6},
+                {type_code: 'project', type_name: '项目', emoji: '💻', is_default: true, display_order: 7},
+                {type_code: 'workout', type_name: '运动', emoji: '🏃', is_default: true, display_order: 8},
+                {type_code: 'paper', type_name: '论文', emoji: '📑', is_default: true, display_order: 9},
+                {type_code: 'other', type_name: '其他', emoji: '📌', is_default: true, display_order: 10}
+            ];
+        }
+    }
+    
+    // 刷新界面中的学习形式类型显示（更新图标等）
+    refreshFormTypeDisplay() {
+        // 更新已转换records的图标
+        if (this.records && this.records.length > 0) {
+            console.log('🔄 更新已有记录的图标');
+            this.records.forEach(record => {
+                const typeInfo = this.getFormTypeInfo(record.type);
+                record.icon = typeInfo.emoji;
+            });
+        }
+        
+        // 重新渲染最近记录（更新图标）
+        if (this.currentPage === 'home') {
+            this.renderRecentRecords();
+        }
+        
+        // 重新渲染记录列表（如果在记录页面）
+        if (this.currentPage === 'records') {
+            this.renderAllRecords();
+        }
+        
+        console.log('🎨 已刷新学习形式类型显示');
+    }
+    
     // Load all records for the records page (not just 20 recent)
     async loadAllRecords() {
         try {
@@ -112,15 +198,20 @@ class LearningBuddyApp {
         }
     }
     
+    // 获取学习形式类型信息（emoji和名称）
+    getFormTypeInfo(typeCode) {
+        const formType = this.formTypes.find(ft => ft.type_code === typeCode);
+        return {
+            emoji: formType?.emoji || '📌',
+            name: formType?.type_name || typeCode || '其他'
+        };
+    }
+    
     // 转换最近记录格式（轻量版）
     convertRecentRecord(backendRecord) {
-        const typeIcons = {
-            video: '📹', podcast: '🎙️', book: '📚', course: '🎓',
-            article: '📄', exercise: '✏️', project: '💻', workout: '🏃', 
-            paper: '📑', other: '📌'
-        };
-        
         const recordDate = new Date(backendRecord.occurred_at);
+        const typeCode = backendRecord.form_type || backendRecord.type;
+        const typeInfo = this.getFormTypeInfo(typeCode);
         
         // 处理标签数据 - 可能来自不同的字段
         let categories = [];
@@ -135,8 +226,8 @@ class LearningBuddyApp {
         return {
             id: backendRecord.record_id,  // 使用正确的record_id字段
             record_id: backendRecord.record_id,  // 保持双重兼容性
-            type: backendRecord.form_type || backendRecord.type, // 使用form_type作为主要类型字段
-            icon: typeIcons[backendRecord.form_type || backendRecord.type] || '📌',
+            type: typeCode, // 使用form_type作为主要类型字段
+            icon: typeInfo.emoji,
             title: backendRecord.title,
             duration: backendRecord.duration_min || 0,
             date: recordDate,
@@ -148,20 +239,9 @@ class LearningBuddyApp {
     
     // 转换后端记录格式为前端格式
     convertBackendRecord(backendRecord) {
-        const typeIcons = {
-            video: '📹',
-            podcast: '🎙️',
-            book: '📚',
-            course: '🎓',
-            article: '📄',
-            exercise: '✏️',
-            project: '💻',
-            workout: '🏃',
-            paper: '📑',
-            other: '📌'
-        };
-        
         const recordDate = new Date(backendRecord.occurred_at);
+        const typeCode = backendRecord.form_type || backendRecord.type;
+        const typeInfo = this.getFormTypeInfo(typeCode);
         
         // 处理标签数据 - 统一处理各种可能的标签字段
         let categories = [];
@@ -180,8 +260,8 @@ class LearningBuddyApp {
         return {
             id: backendRecord.record_id,
             record_id: backendRecord.record_id,  // 保留原始ID用于API调用
-            type: backendRecord.form_type,
-            icon: typeIcons[backendRecord.form_type] || '📌',
+            type: typeCode,
+            icon: typeInfo.emoji,
             title: backendRecord.title,
             categories: categories, // 使用处理后的标签数据
             duration: backendRecord.duration_min || 0,
@@ -316,6 +396,9 @@ class LearningBuddyApp {
             this.updateDashboard();
             this.renderRecentRecords();
         } else if (page === 'records') {
+            // 渲染学习形式类型过滤器
+            this.renderTypeFilter();
+            
             // 为records页面加载完整的记录列表（不是仅最近20条）
             // 如果数据最近刚更新过，直接渲染不重新加载
             if (this.lastRecordUpdate && (Date.now() - this.lastRecordUpdate < 5000)) {
@@ -335,10 +418,282 @@ class LearningBuddyApp {
         this.currentStep = 1;
         this.showStep(1);
         
+        // 渲染动态学习形式类型
+        this.renderQuickRecordFormTypes();
+        
         // 重新绑定标签建议事件（确保模态框显示后绑定）
         setTimeout(() => {
             this.bindTagSuggestionEvents();
         }, 100);
+    }
+
+    // 渲染快速记录模态框的学习形式类型
+    renderQuickRecordFormTypes() {
+        const typeGrid = document.querySelector('#quickRecordModal .type-grid');
+        if (!typeGrid) return;
+        
+        // 清空现有按钮
+        typeGrid.innerHTML = '';
+        
+        // 添加现有的学习形式类型
+        this.formTypes.forEach(formType => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'type-btn';
+            button.dataset.type = formType.type_code;
+            button.innerHTML = `${formType.emoji} ${formType.type_name}`;
+            
+            // 添加点击事件监听器（选中逻辑）
+            button.addEventListener('click', (e) => {
+                // 移除其他按钮的选中状态
+                document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('selected'));
+                // 添加当前按钮的选中状态
+                e.target.classList.add('selected');
+                // 保存选中的类型
+                this.recordData.type = e.target.dataset.type;
+                console.log('选中类型:', this.recordData.type);
+            });
+            
+            // 如果不是默认类型，添加删除功能（长按）
+            if (!formType.is_default) {
+                let longPressTimer;
+                button.addEventListener('mousedown', (e) => {
+                    longPressTimer = setTimeout(() => {
+                        this.showDeleteFormTypeConfirm(formType);
+                    }, 1000); // 长按1秒
+                });
+                button.addEventListener('mouseup', () => {
+                    clearTimeout(longPressTimer);
+                });
+                button.addEventListener('mouseleave', () => {
+                    clearTimeout(longPressTimer);
+                });
+            }
+            
+            typeGrid.appendChild(button);
+        });
+        
+        // 添加"➕ 添加类型"按钮
+        const addButton = document.createElement('button');
+        addButton.type = 'button';
+        addButton.className = 'type-btn add-type-btn';
+        addButton.innerHTML = '➕ 添加类型';
+        // 注意：添加类型按钮不设置 data-type，避免被选中
+        addButton.addEventListener('click', () => {
+            this.showCreateFormTypeModal();
+        });
+        
+        typeGrid.appendChild(addButton);
+    }
+
+    // 显示创建新学习形式类型的模态框
+    showCreateFormTypeModal() {
+        this.showCustomTypeModal();
+    }
+
+    showCustomTypeModal() {
+        // 检查是否已存在弹窗，避免重复创建
+        let existingModal = document.querySelector('.custom-type-modal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        const modal = document.createElement('div');
+        modal.className = 'custom-type-modal';
+        modal.innerHTML = `
+            <div class="custom-type-overlay">
+                <div class="custom-type-content">
+                    <div class="custom-type-header">
+                        <h3>添加学习形式类型</h3>
+                    </div>
+                    <div class="custom-type-body">
+                        <label>请输入新的学习形式类型名称：</label>
+                        <input type="text" id="customTypeInput" class="custom-type-input" placeholder="例如：书法、编程、英语等" maxlength="20" />
+                    </div>
+                    <div class="custom-type-actions">
+                        <button class="btn btn-secondary" onclick="app.closeCustomTypeModal()">取消</button>
+                        <button class="btn btn-primary" onclick="app.confirmCreateCustomType()">确定</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // 添加动画效果
+        setTimeout(() => modal.classList.add('active'), 10);
+        
+        // 聚焦输入框
+        setTimeout(() => {
+            const input = document.getElementById('customTypeInput');
+            if (input) {
+                input.focus();
+            }
+        }, 100);
+
+        // 支持回车键确认
+        const input = document.getElementById('customTypeInput');
+        if (input) {
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    this.confirmCreateCustomType();
+                }
+            });
+        }
+    }
+
+    closeCustomTypeModal() {
+        const modal = document.querySelector('.custom-type-modal');
+        if (modal) {
+            modal.classList.remove('active');
+            setTimeout(() => modal.remove(), 300);
+        }
+    }
+
+    async confirmCreateCustomType() {
+        const input = document.getElementById('customTypeInput');
+        const typeName = input ? input.value.trim() : '';
+        
+        if (!typeName) {
+            this.showError('请输入类型名称');
+            return;
+        }
+
+        // 关闭弹窗
+        this.closeCustomTypeModal();
+        
+        // 创建自定义类型
+        this.createCustomFormType(typeName);
+    }
+    
+    // 创建自定义学习形式类型
+    async createCustomFormType(typeName) {
+        try {
+            // 生成唯一的type_code（使用时间戳+随机数确保唯一性）
+            const typeCode = `custom_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+            
+            const newFormType = await window.apiService.createFormType({
+                type_code: typeCode,
+                type_name: typeName,
+                // emoji will be randomly assigned by backend
+                display_order: 999
+            });
+            
+            // 添加到本地formTypes数组
+            this.formTypes.push(newFormType);
+            
+            // 重新渲染快速记录的类型按钮
+            this.renderQuickRecordFormTypes();
+            
+            // 如果详细记录页面打开，也更新
+            this.renderDetailRecordFormTypes();
+            
+            this.showSuccessMessage(`学习形式类型"${typeName}"创建成功！`);
+            
+        } catch (error) {
+            console.error('❌ 创建学习形式类型失败:', error);
+            this.showError('创建学习形式类型失败：' + error.message);
+        }
+    }
+    
+    // 显示删除学习形式类型确认
+    showDeleteFormTypeConfirm(formType) {
+        if (confirm(`确定要删除学习形式类型"${formType.type_name}"吗？\n\n注意：只有当该类型没有被任何记录使用时才能删除。`)) {
+            this.deleteCustomFormType(formType);
+        }
+    }
+    
+    // 删除自定义学习形式类型
+    async deleteCustomFormType(formType) {
+        try {
+            await window.apiService.deleteFormType(formType.type_id);
+            
+            // 从本地formTypes数组中移除
+            this.formTypes = this.formTypes.filter(ft => ft.type_id !== formType.type_id);
+            
+            // 重新渲染快速记录的类型按钮
+            this.renderQuickRecordFormTypes();
+            
+            // 如果详细记录页面打开，也更新
+            this.renderDetailRecordFormTypes();
+            
+            this.showSuccessMessage(`学习形式类型"${formType.type_name}"删除成功！`);
+            
+        } catch (error) {
+            console.error('❌ 删除学习形式类型失败:', error);
+            this.showError('删除学习形式类型失败：' + error.message);
+        }
+    }
+    
+    // 渲染详细记录页面的学习形式类型下拉菜单
+    renderDetailRecordFormTypes() {
+        const select = document.getElementById('recordDetailFormType');
+        if (!select) return;
+        
+        // 清空现有选项
+        select.innerHTML = '';
+        
+        // 添加现有的学习形式类型
+        this.formTypes.forEach(formType => {
+            const option = document.createElement('option');
+            option.value = formType.type_code;
+            option.textContent = `${formType.emoji} ${formType.type_name}`;
+            select.appendChild(option);
+        });
+        
+        // 添加"+ 新增类型"选项
+        const addOption = document.createElement('option');
+        addOption.value = '__add_new__';
+        addOption.textContent = '+ 新增类型';
+        addOption.style.color = '#666';
+        select.appendChild(addOption);
+        
+        // 监听选择事件
+        select.addEventListener('change', (e) => {
+            if (e.target.value === '__add_new__') {
+                this.showCreateFormTypeModal();
+                // 重置选择到第一个有效选项
+                setTimeout(() => {
+                    if (this.formTypes.length > 0) {
+                        e.target.value = this.formTypes[0].type_code;
+                    }
+                }, 100);
+            }
+        });
+    }
+    
+    // 渲染学习记录页面的学习形式类型过滤器
+    renderTypeFilter() {
+        const select = document.getElementById('typeFilter');
+        if (!select) return;
+        
+        // 保存当前选择的值
+        const currentValue = select.value;
+        
+        // 清空现有选项
+        select.innerHTML = '';
+        
+        // 添加"所有类型"选项
+        const allOption = document.createElement('option');
+        allOption.value = '';
+        allOption.textContent = '所有类型';
+        select.appendChild(allOption);
+        
+        // 添加现有的学习形式类型
+        this.formTypes.forEach(formType => {
+            const option = document.createElement('option');
+            option.value = formType.type_code;
+            option.textContent = `${formType.emoji} ${formType.type_name}`;
+            select.appendChild(option);
+        });
+        
+        // 恢复之前的选择（如果仍然存在）
+        if (currentValue) {
+            const optionExists = Array.from(select.options).some(option => option.value === currentValue);
+            if (optionExists) {
+                select.value = currentValue;
+            }
+        }
     }
 
     closeQuickRecord() {
@@ -468,6 +823,7 @@ class LearningBuddyApp {
             const mood = document.getElementById('recordMood').value || '';
             
             if (!title || !this.recordData.type) {
+                console.error('表单验证失败:', { title, type: this.recordData.type, recordData: this.recordData });
                 this.showError('请填写完整的记录信息');
                 return;
             }
@@ -1164,6 +1520,13 @@ class LearningBuddyApp {
     }
 
     getTypeName(type) {
+        // First try to find in user's form types
+        const formType = this.formTypes.find(ft => ft.type_code === type);
+        if (formType) {
+            return formType.type_name;
+        }
+        
+        // Fallback to default names for backward compatibility
         const typeNames = {
             video: '视频',
             podcast: '播客',
@@ -1173,6 +1536,7 @@ class LearningBuddyApp {
             exercise: '题目',
             project: '项目',
             workout: '运动',
+            paper: '论文',
             other: '其他'
         };
         return typeNames[type] || type;
@@ -1606,6 +1970,9 @@ class LearningBuddyApp {
         // 更新导航状态 - 不激活任何导航链接，因为这是详情页
         document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
         
+        // 渲染学习形式类型下拉菜单
+        this.renderDetailRecordFormTypes();
+        
         // 填充数据
         this.populateRecordDetail(recordDetail);
         
@@ -1691,6 +2058,9 @@ class LearningBuddyApp {
         
         // 更新导航状态
         document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+        
+        // 渲染学习形式类型下拉菜单
+        this.renderDetailRecordFormTypes();
         
         // 填充空数据并设置为编辑模式
         this.populateRecordDetail(newRecordTemplate);
