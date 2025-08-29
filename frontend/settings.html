@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设置 - 学习搭子</title>
+    <link rel="icon" type="image/x-icon" href="study.ico">
+    <link rel="shortcut icon" type="image/x-icon" href="study.ico">
+    <link rel="apple-touch-icon" href="study.ico">
+    <link rel="stylesheet" href="styles/main.css?v=20250827-2">
+    <style>
+        .settings-container {
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .settings-header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .settings-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .settings-subtitle {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .settings-tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 30px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 4px;
+        }
+
+        .settings-tab {
+            flex: 1;
+            padding: 12px 16px;
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #666;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .settings-tab.active {
+            background: white;
+            color: #007bff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .settings-content {
+            display: none;
+        }
+
+        .settings-content.active {
+            display: block;
+        }
+
+        /* Form Types Section */
+        .form-types-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 25px;
+            margin-bottom: 20px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin: 0;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #545b62;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: #007bff;
+            border: 1px solid #007bff;
+        }
+
+        .btn-outline:hover {
+            background: #007bff;
+            color: white;
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        /* Form Types Grid */
+        .form-types-grid {
+            display: grid;
+            gap: 16px;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        }
+
+        .form-type-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 16px;
+            transition: all 0.2s;
+        }
+
+        .form-type-card:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .form-type-card.default {
+            border-left: 4px solid #28a745;
+        }
+
+        .form-type-card.custom {
+            border-left: 4px solid #007bff;
+        }
+
+        .form-type-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .form-type-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .form-type-emoji {
+            font-size: 24px;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .form-type-details {
+            flex: 1;
+        }
+
+        .form-type-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        .form-type-code {
+            font-size: 12px;
+            color: #666;
+            font-family: monospace;
+            background: #f1f5f9;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .form-type-badge {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+
+        .badge-default {
+            background: #e8f5e8;
+            color: #28a745;
+        }
+
+        .badge-custom {
+            background: #e6f3ff;
+            color: #007bff;
+        }
+
+        .form-type-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        /* Modal Styles */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+
+        .modal.hidden {
+            display: none !important;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin: 0;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: #999;
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.2s;
+        }
+
+        .modal-close:hover {
+            background: #f5f5f5;
+            color: #666;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+        }
+
+        .form-group .help-text {
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+        }
+
+        /* Emoji Picker */
+        .emoji-picker {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background: #f8f9fa;
+        }
+
+        .emoji-option {
+            width: 40px;
+            height: 40px;
+            border: none;
+            background: white;
+            border-radius: 6px;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .emoji-option:hover {
+            background: #e9ecef;
+            transform: scale(1.1);
+        }
+
+        .emoji-option.selected {
+            background: #007bff;
+            color: white;
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 1px solid #eee;
+        }
+
+        .alert {
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .alert-success {
+            color: #155724;
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+        }
+
+        .alert-danger {
+            color: #721c24;
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+        }
+
+        .alert-warning {
+            color: #856404;
+            background-color: #fff3cd;
+            border-color: #ffeaa7;
+        }
+
+        .back-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+
+        .back-button:hover {
+            background: #0056b3;
+        }
+
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Confirmation Dialog */
+        .confirm-dialog {
+            text-align: center;
+        }
+
+        .confirm-dialog .modal-content {
+            max-width: 400px;
+        }
+
+        .confirm-message {
+            color: #666;
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }
+
+        .confirm-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .settings-container {
+                margin: 20px;
+                padding: 15px;
+            }
+
+            .form-types-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .settings-tabs {
+                flex-direction: column;
+                gap: 8px;
+                padding: 8px;
+            }
+
+            .section-header {
+                flex-direction: column;
+                gap: 12px;
+                align-items: stretch;
+            }
+
+            .modal-content {
+                padding: 20px;
+                margin: 20px;
+            }
+        }
+
+        /* Future Settings Sections */
+        .coming-soon {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .coming-soon-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .coming-soon-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .coming-soon-text {
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <button class="back-button" onclick="goBack()" title="返回">←</button>
+    
+    <div class="settings-container">
+        <div class="settings-header">
+            <h1 class="settings-title">⚙️ 设置</h1>
+            <p class="settings-subtitle">管理您的学习搭子应用偏好设置</p>
+        </div>
+
+        <!-- Settings Tabs -->
+        <div class="settings-tabs">
+            <button class="settings-tab active" onclick="showTab('form-types')">
+                📝 学习形式管理
+            </button>
+            <button class="settings-tab" onclick="showTab('account')">
+                👤 账户设置
+            </button>
+            <button class="settings-tab" onclick="showTab('appearance')">
+                🎨 外观设置
+            </button>
+            <button class="settings-tab" onclick="showTab('data')">
+                📊 数据管理
+            </button>
+        </div>
+
+        <!-- Form Types Management Tab -->
+        <div id="form-types-tab" class="settings-content active">
+            <div class="form-types-section">
+                <div class="section-header">
+                    <h2 class="section-title">学习形式类别</h2>
+                    <button class="btn btn-primary" onclick="showCreateFormTypeModal()">
+                        ➕ 新增类别
+                    </button>
+                </div>
+                
+                <div id="form-types-alert"></div>
+                
+                <div class="form-types-grid" id="formTypesGrid">
+                    <!-- Form types will be loaded here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Account Settings Tab -->
+        <div id="account-tab" class="settings-content">
+            <div class="coming-soon">
+                <div class="coming-soon-icon">👤</div>
+                <div class="coming-soon-title">账户设置</div>
+                <div class="coming-soon-text">此功能正在开发中，敬请期待</div>
+            </div>
+        </div>
+
+        <!-- Appearance Settings Tab -->
+        <div id="appearance-tab" class="settings-content">
+            <div class="coming-soon">
+                <div class="coming-soon-icon">🎨</div>
+                <div class="coming-soon-title">外观设置</div>
+                <div class="coming-soon-text">主题、字体等外观设置功能即将上线</div>
+            </div>
+        </div>
+
+        <!-- Data Management Tab -->
+        <div id="data-tab" class="settings-content">
+            <div class="coming-soon">
+                <div class="coming-soon-icon">📊</div>
+                <div class="coming-soon-title">数据管理</div>
+                <div class="coming-soon-text">导入导出、备份恢复等数据管理功能正在筹备中</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create/Edit Form Type Modal -->
+    <div id="formTypeModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle">新增学习形式</h3>
+                <button class="modal-close" onclick="closeFormTypeModal()">×</button>
+            </div>
+            
+            <form id="formTypeForm" onsubmit="handleFormTypeSubmit(event)">
+                <div class="form-group" id="typeCodeGroup">
+                    <label for="typeCode">类别代码 *</label>
+                    <input type="text" id="typeCode" name="type_code" required
+                           placeholder="例如: custom-study" pattern="[a-z0-9-]+"
+                           title="只能包含小写字母、数字和短横线">
+                    <div class="help-text">用于系统识别的唯一代码，只能包含小写字母、数字和短横线</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="typeName">类别名称 *</label>
+                    <input type="text" id="typeName" name="type_name" required
+                           placeholder="例如: 自定义学习" maxlength="20">
+                    <div class="help-text">显示给用户的名称，最多20个字符</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="emoji">选择图标</label>
+                    <div class="emoji-picker" id="emojiPicker">
+                        <!-- Emoji options will be populated here -->
+                    </div>
+                    <input type="hidden" id="selectedEmoji" name="emoji">
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeFormTypeModal()">
+                        取消
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <span id="submitButtonText">创建类别</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Confirm Delete Modal -->
+    <div id="confirmDeleteModal" class="modal hidden">
+        <div class="modal-content confirm-dialog">
+            <div class="modal-header">
+                <h3 class="modal-title">确认删除</h3>
+                <button class="modal-close" onclick="closeConfirmDeleteModal()">×</button>
+            </div>
+            
+            <div class="confirm-message" id="confirmMessage">
+                <!-- Confirmation message will be set here -->
+            </div>
+
+            <div class="confirm-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeConfirmDeleteModal()">
+                    取消
+                </button>
+                <button type="button" class="btn btn-danger" onclick="confirmDelete()">
+                    确认删除
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Include Environment Variables -->
+    <script src="js/env.js"></script>
+    <!-- Include Authentication Service -->
+    <script src="js/auth.js?v=20250825-6"></script>
+    <!-- Include API Service -->
+    <script src="js/api-service.js?v=20250825-6"></script>
+    <!-- Include Settings Logic -->
+    <script src="js/settings.js?v=20250829-4"></script>
+
+    <script>
+        // Page initialization
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Wait for authService to be fully initialized
+            await new Promise(resolve => {
+                if (window.authService && window.authService.supabase) {
+                    setTimeout(resolve, 200);
+                } else {
+                    const checkInit = () => {
+                        if (window.authService && window.authService.supabase) {
+                            setTimeout(resolve, 200);
+                        } else {
+                            setTimeout(checkInit, 100);
+                        }
+                    };
+                    checkInit();
+                }
+            });
+
+            // Check authentication status
+            console.log('🔍 Settings页面检查认证状态:', authService.isAuthenticated());
+            if (!authService.isAuthenticated()) {
+                console.log('❌ 未登录，重定向到登录页');
+                window.location.href = 'login.html';
+                return;
+            }
+
+            console.log('✅ 已登录，初始化设置页面');
+            // Initialize settings page
+            if (window.settingsManager) {
+                await window.settingsManager.init();
+            }
+        });
+
+        // Navigation functions
+        function goBack() {
+            window.location.href = 'index.html';
+        }
+
+        function showTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.settings-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Update content
+            document.querySelectorAll('.settings-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(tabName + '-tab').classList.add('active');
+        }
+
+        // Form type modal functions
+        function showCreateFormTypeModal() {
+            if (window.settingsManager) {
+                window.settingsManager.showCreateFormTypeModal();
+            }
+        }
+
+        function showEditFormTypeModal(typeId) {
+            if (window.settingsManager) {
+                window.settingsManager.showEditFormTypeModal(typeId);
+            }
+        }
+
+        function closeFormTypeModal() {
+            if (window.settingsManager) {
+                window.settingsManager.closeFormTypeModal();
+            }
+        }
+
+        function handleFormTypeSubmit(event) {
+            event.preventDefault();
+            if (window.settingsManager) {
+                window.settingsManager.handleFormTypeSubmit(event);
+            }
+        }
+
+        function showDeleteConfirmModal(typeId) {
+            if (window.settingsManager) {
+                window.settingsManager.showDeleteConfirmModal(typeId);
+            }
+        }
+
+        function closeConfirmDeleteModal() {
+            if (window.settingsManager) {
+                window.settingsManager.closeConfirmDeleteModal();
+            }
+        }
+
+        function confirmDelete() {
+            if (window.settingsManager) {
+                window.settingsManager.confirmDelete();
+            }
+        }
+    </script>
+</body>
+</html>
