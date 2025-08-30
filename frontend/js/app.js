@@ -413,7 +413,7 @@ class LearningBuddyApp {
         }
     }
 
-    showQuickRecord() {
+    async showQuickRecord() {
         document.getElementById('quickRecordModal').classList.add('active');
         this.currentStep = 1;
         this.showStep(1);
@@ -421,10 +421,99 @@ class LearningBuddyApp {
         // 渲染动态学习形式类型
         this.renderQuickRecordFormTypes();
         
-        // 重新绑定标签建议事件（确保模态框显示后绑定）
-        setTimeout(() => {
-            this.bindTagSuggestionEvents();
-        }, 100);
+        // 渲染智能标签建议（异步操作）
+        await this.renderSmartTagSuggestions();
+        
+        // 确保标签建议正确显示选中状态
+        this.bindTagSuggestionEvents();
+    }
+
+    // 渲染智能标签建议
+    async renderSmartTagSuggestions() {
+        try {
+            // 默认标签
+            const defaultTags = ['英语', 'AI', '数学', '编程', '历史'];
+            
+            // 获取最近使用的标签
+            const recentTags = await window.apiService.getRecentTags() || [];
+            
+            // 智能组合标签逻辑
+            let finalTags = [];
+            if (recentTags.length < 5) {
+                // 情况1: 最近标签少于5个，显示所有最近标签 + 所有默认标签
+                finalTags = [...recentTags, ...defaultTags.filter(t => !recentTags.includes(t))];
+            } else if (recentTags.length >= 5 && recentTags.length < 10) {
+                // 情况2: 最近标签5-9个，显示所有最近标签 + 补充默认标签至10个
+                const remaining = 10 - recentTags.length;
+                const unusedDefaults = defaultTags.filter(t => !recentTags.includes(t));
+                finalTags = [...recentTags, ...unusedDefaults.slice(0, remaining)];
+            } else {
+                // 情况3: 最近标签10个或以上，只显示最近标签
+                finalTags = recentTags;
+            }
+            
+            // 渲染标签建议
+            this.updateTagSuggestions(finalTags);
+            
+        } catch (error) {
+            console.error('渲染智能标签建议失败:', error);
+            // 失败时显示默认标签
+            this.updateTagSuggestions(['英语', 'AI', '数学', '编程', '历史']);
+        }
+    }
+    
+    // 更新标签建议显示
+    updateTagSuggestions(tags) {
+        const suggestionsContainer = document.querySelector('.tag-suggestions');
+        if (!suggestionsContainer) return;
+        
+        // 清空现有标签
+        suggestionsContainer.innerHTML = '';
+        
+        // 获取当前已选择的标签
+        const selectedTags = this.recordData.tags || [];
+        
+        // 创建新的标签元素
+        tags.forEach(tagName => {
+            const tagElement = document.createElement('span');
+            tagElement.className = 'tag-suggestion';
+            
+            // 如果标签已被选择，添加选中状态
+            if (selectedTags.includes(tagName)) {
+                tagElement.classList.add('selected');
+            }
+            
+            tagElement.textContent = tagName;
+            
+            // 直接绑定点击事件
+            tagElement.addEventListener('click', () => {
+                const currentSelectedTags = this.recordData.tags || [];
+                
+                // 切换标签选中状态
+                if (currentSelectedTags.includes(tagName)) {
+                    this.removeTag(tagName);
+                } else {
+                    this.addTag(tagName);
+                }
+            });
+            
+            suggestionsContainer.appendChild(tagElement);
+        });
+    }
+    
+    // 更新标签建议的选中状态（不重新创建DOM元素）
+    updateTagSuggestionsState() {
+        const selectedTags = this.recordData.tags || [];
+        const suggestionElements = document.querySelectorAll('.tag-suggestion');
+        
+        suggestionElements.forEach(element => {
+            const tagName = element.textContent;
+            if (selectedTags.includes(tagName)) {
+                element.classList.add('selected');
+            } else {
+                element.classList.remove('selected');
+            }
+        });
     }
 
     // 渲染快速记录模态框的学习形式类型
@@ -702,18 +791,8 @@ class LearningBuddyApp {
     }
     
     bindTagSuggestionEvents() {
-        // 重新绑定标签建议点击事件
-        document.querySelectorAll('.tag-suggestion').forEach(tag => {
-            // 移除之前的事件监听器（如果有）
-            tag.replaceWith(tag.cloneNode(true));
-        });
-        
-        // 重新绑定事件
-        document.querySelectorAll('.tag-suggestion').forEach(tag => {
-            tag.addEventListener('click', (e) => {
-                this.addTag(e.target.textContent);
-            });
-        });
+        // 由于现在在 updateTagSuggestions 中直接绑定事件，这里只需要确保选中状态正确
+        this.updateTagSuggestionsState();
     }
 
     switchRecordTab(tab) {
@@ -770,6 +849,8 @@ class LearningBuddyApp {
         if (!this.recordData.tags.includes(tagName)) {
             this.recordData.tags.push(tagName);
             this.renderTags();
+            // 更新标签建议的选中状态
+            this.updateTagSuggestionsState();
         }
     }
 
@@ -792,6 +873,8 @@ class LearningBuddyApp {
         }
         this.recordData.tags = this.recordData.tags.filter(t => t !== tagName);
         this.renderTags();
+        // 更新标签建议的选中状态
+        this.updateTagSuggestionsState();
     }
 
     setRating(ratingElement, value) {
@@ -918,6 +1001,8 @@ class LearningBuddyApp {
         this.setSubmitButtonState(false);
         // 清空标签显示
         this.renderTags();
+        // 重置标签建议的选中状态
+        this.updateTagSuggestionsState();
     }
 
     showSuccessMessage(message = '记录保存成功！') {

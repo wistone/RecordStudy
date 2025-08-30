@@ -181,6 +181,16 @@ class APIService {
         return await this.request(`/records/${recordId}`);
     }
 
+    async getRecentTags() {
+        try {
+            const data = await this.request('/records/recent-tags');
+            return data || [];
+        } catch (error) {
+            console.error('获取最近标签失败:', error);
+            return []; // 失败时返回空数组，让前端优雅降级
+        }
+    }
+
     async updateRecord(recordId, updateData) {
         const data = await this.request(`/records/${recordId}`, {
             method: 'PUT',

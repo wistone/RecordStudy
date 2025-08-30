@@ -161,6 +161,64 @@ async def get_records(
             detail=f"Failed to fetch records: {str(e)}"
         )
 
+@router.get("/recent-tags", response_model=list)
+async def get_recent_tags(current_user_id: str = Depends(get_current_user_id)):
+    """获取用户最近使用的标签（基于最近10条记录）"""
+    try:
+        from supabase import create_client
+        from app.core.config import settings
+        
+        client = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
+        
+        # 查询用户最近10条记录
+        records_response = client.table('records')\
+            .select('resource_id')\
+            .eq('user_id', current_user_id)\
+            .order('occurred_at', desc=True)\
+            .limit(10)\
+            .execute()
+        
+        if not records_response.data:
+            return []
+        
+        # 收集所有有效的resource_id
+        resource_ids = [record['resource_id'] for record in records_response.data if record.get('resource_id')]
+        
+        if not resource_ids:
+            return []
+        
+        # 批量查询资源标签关联
+        resource_tags_response = client.table('resource_tags')\
+            .select('tag_id')\
+            .eq('user_id', current_user_id)\
+            .in_('resource_id', resource_ids)\
+            .execute()
+        
+        if not resource_tags_response.data:
+            return []
+        
+        # 收集所有标签ID
+        tag_ids = list(set([rt['tag_id'] for rt in resource_tags_response.data]))
+        
+        # 批量查询标签名称
+        tags_response = client.table('tags')\
+            .select('tag_name')\
+            .in_('tag_id', tag_ids)\
+            .execute()
+        
+        if not tags_response.data:
+            return []
+        
+        # 提取标签名称并去重
+        tag_names = list(set([tag['tag_name'] for tag in tags_response.data]))
+        
+        return tag_names
+        
+    except Exception as e:
+        print(f"获取最近标签失败: {e}")
+        # 如果出错，返回空列表而不是抛出异常，让前端可以优雅降级
+        return []
+
 @router.post("/", response_model=dict, status_code=status.HTTP_201_CREATED)
 async def create_record(
     record_data: RecordCreate,

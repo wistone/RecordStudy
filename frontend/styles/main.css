@@ -1630,6 +1630,11 @@ body {
     color: white;
 }
 
+.tag-suggestion.selected {
+    background: var(--primary-color);
+    color: white;
+}
+
 .selected-tags {
     display: flex;
     gap: 8px;
