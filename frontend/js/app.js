@@ -2134,6 +2134,9 @@ class LearningBuddyApp {
         document.getElementById('recordDetailMood').value = data.mood || '';
         document.getElementById('recordDetailBodyMd').value = data.body_md || '';
         
+        // 更新 Markdown 预览
+        this.updateMarkdownPreview(data.body_md || '');
+        
         // 资源信息 - 在创建新记录或已有资源时显示
         if (data.resource || this.isCreatingNew) {
             document.getElementById('resourceSection').style.display = 'block';
@@ -2307,6 +2310,9 @@ class LearningBuddyApp {
         // 显示/隐藏标签编辑器
         const tagEditor = document.getElementById('tagEditor');
         if (tagEditor) tagEditor.style.display = isEdit ? 'flex' : 'none';
+        
+        // 切换 Markdown 预览和编辑模式
+        this.toggleMarkdownEditMode(isEdit);
         
         // 显示/隐藏标签删除按钮
         document.querySelectorAll('.tag-remove').forEach(btn => {
@@ -2594,6 +2600,45 @@ class LearningBuddyApp {
         // 更新显示
         this.displayTags(this.currentRecordDetail.tags);
         
+    }
+
+    // Markdown 预览功能
+    updateMarkdownPreview(content) {
+        const previewElement = document.getElementById('recordDetailBodyMdPreview');
+        if (!previewElement) return;
+        
+        if (!content || content.trim() === '') {
+            previewElement.innerHTML = '<div class="markdown-preview-empty">暂无笔记内容</div>';
+        } else {
+            try {
+                // 使用 marked 库渲染 Markdown
+                previewElement.innerHTML = marked.parse(content);
+            } catch (error) {
+                console.error('Markdown 渲染失败:', error);
+                previewElement.innerHTML = `<div class="markdown-preview-empty">Markdown 渲染失败</div>`;
+            }
+        }
+    }
+
+    // 切换 Markdown 编辑/预览模式
+    toggleMarkdownEditMode(isEdit) {
+        const textarea = document.getElementById('recordDetailBodyMd');
+        const preview = document.getElementById('recordDetailBodyMdPreview');
+        
+        if (!textarea || !preview) return;
+        
+        if (isEdit) {
+            // 编辑模式：显示 textarea，隐藏预览
+            textarea.style.display = 'block';
+            preview.style.display = 'none';
+        } else {
+            // 预览模式：隐藏 textarea，显示预览
+            textarea.style.display = 'none';
+            preview.style.display = 'block';
+            
+            // 更新预览内容
+            this.updateMarkdownPreview(textarea.value);
+        }
     }
 }
 

@@ -285,6 +285,7 @@
                                 <h3>学习笔记</h3>
                                 <div class="detail-fields">
                                     <textarea id="recordDetailBodyMd" class="detail-textarea large" readonly placeholder="学习笔记和详细内容..."></textarea>
+                                    <div id="recordDetailBodyMdPreview" class="markdown-preview" style="display: none;"></div>
                                 </div>
                             </div>
                         </div>
@@ -656,6 +657,8 @@
         </div>
     </div>
 
+    <!-- Include Markdown Library -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@9.1.2/marked.min.js"></script>
     <!-- Include Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- Include Environment Variables -->
