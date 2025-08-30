@@ -2258,6 +2258,9 @@ class LearningBuddyApp {
         // 重置为查看模式
         this.setEditMode(false);
         
+        // 更新详情页面各部分的显示状态（仅在预览模式下隐藏空内容）
+        // 注意：setEditMode(false) 已经调用了 updateDetailSectionsVisibility，这里不需要重复调用
+        
         // 确保删除按钮的初始状态是正确的
         const deleteBtn = document.getElementById('deleteRecordBtn');
         if (deleteBtn) {
@@ -2280,6 +2283,91 @@ class LearningBuddyApp {
                 star.textContent = '☆';
             }
         });
+    }
+    
+    // 显示所有详情页面部分（用于编辑模式）
+    showAllDetailSections() {
+        const sections = [
+            'experienceSection', // 学习体验部分
+            'resourceSection',   // 关联资源部分
+            'userResourceSection' // 用户资源关系部分
+        ];
+        
+        sections.forEach(sectionId => {
+            const section = document.getElementById(sectionId);
+            if (section) {
+                section.style.display = 'block';
+            }
+        });
+    }
+    
+    // 更新详情页面各部分的显示状态（仅在预览模式下生效）
+    updateDetailSectionsVisibility(data) {
+        // 只在预览模式下执行隐藏逻辑
+        if (this.isEditMode) {
+            return;
+        }
+        
+        // 检查学习体验部分是否为空
+        const hasExperienceData = 
+            (data.difficulty && data.difficulty > 0) ||
+            (data.focus && data.focus > 0) ||
+            (data.energy && data.energy > 0) ||
+            (data.mood && data.mood.trim() !== '');
+            
+        const experienceSection = document.getElementById('experienceSection');
+        if (experienceSection) {
+            experienceSection.style.display = hasExperienceData ? 'block' : 'none';
+        }
+        
+        // 检查关联资源是否为虚拟资源
+        const isVirtualResource = data.resource &&
+            data.resource.title === data.title &&
+            data.resource.type === data.form_type;
+            
+        // 检查关联资源是否有实际内容（除了标题和类型外）
+        const hasResourceContent = data.resource && (
+            (data.resource.author && data.resource.author.trim() !== '') ||
+            (data.resource.url && data.resource.url.trim() !== '') ||
+            (data.resource.platform && data.resource.platform.trim() !== '') ||
+            (data.resource.isbn && data.resource.isbn.trim() !== '') ||
+            (data.resource.description && data.resource.description.trim() !== '')
+        );
+            
+        const resourceSection = document.getElementById('resourceSection');
+        if (resourceSection) {
+            // 只要有实际内容就显示关联资源部分，不管是否为虚拟资源
+            resourceSection.style.display = hasResourceContent ? 'block' : 'none';
+        }
+        
+        // 检查个人资源关系是否有实际内容
+        // 从数据对象检查
+        const hasUserResourceDataContent = data.user_resource && (
+            (data.user_resource.status && data.user_resource.status !== 'wishlist') || // 状态不是"待学习"
+            (data.user_resource.rating && data.user_resource.rating > 0) || // 评分大于0
+            (data.user_resource.review_short && data.user_resource.review_short.trim() !== '') || // 有评价内容
+            data.user_resource.is_favorite === true || // 已收藏
+            (data.user_resource.total_duration_min && data.user_resource.total_duration_min > 0) // 学习时长大于0
+        );
+        
+        // 从表单字段检查（适用于编辑状态）
+        const userResourceStatusField = document.getElementById('userResourceStatus');
+        const userResourceReviewField = document.getElementById('userResourceReview');
+        const userResourceFavoriteField = document.getElementById('userResourceFavorite');
+        
+        const hasUserResourceFormContent = 
+            (userResourceStatusField && userResourceStatusField.value && userResourceStatusField.value !== 'wishlist') ||
+            (userResourceReviewField && userResourceReviewField.value.trim() !== '') ||
+            (userResourceFavoriteField && userResourceFavoriteField.checked) ||
+            (this.getRatingValue && this.getRatingValue('userResourceRating') > 0);
+            
+        const hasUserResourceContent = hasUserResourceDataContent || hasUserResourceFormContent;
+        
+        // 个人资源关系部分：只要有实际的个人资源内容就显示，不考虑是否为虚拟资源
+        const userResourceSection = document.getElementById('userResourceSection');
+        if (userResourceSection) {
+            userResourceSection.style.display = hasUserResourceContent ? 'block' : 'none';
+        }
     }
 
 
@@ -2340,6 +2428,30 @@ class LearningBuddyApp {
     // 设置编辑模式
     setEditMode(isEdit) {
         this.isEditMode = isEdit;
+        
+        // 如果当前记录数据包含扁平格式的资源字段，转换为嵌套格式
+        if (this.currentRecordDetail && (this.currentRecordDetail.resource_title || this.currentRecordDetail.resource_author)) {
+            // 从扁平格式迁移到嵌套格式
+            if (!this.currentRecordDetail.resource) {
+                this.currentRecordDetail.resource = {
+                    title: this.currentRecordDetail.resource_title || '',
+                    type: this.currentRecordDetail.resource_type || '',
+                    author: this.currentRecordDetail.resource_author || '',
+                    url: this.currentRecordDetail.resource_url || '',
+                    platform: this.currentRecordDetail.resource_platform || '',
+                    isbn: this.currentRecordDetail.resource_isbn || '',
+                    description: this.currentRecordDetail.resource_description || ''
+                };
+            }
+            // 清理扁平格式字段
+            delete this.currentRecordDetail.resource_title;
+            delete this.currentRecordDetail.resource_type;
+            delete this.currentRecordDetail.resource_author;
+            delete this.currentRecordDetail.resource_url;
+            delete this.currentRecordDetail.resource_platform;
+            delete this.currentRecordDetail.resource_isbn;
+            delete this.currentRecordDetail.resource_description;
+        }
         
         // 显示/隐藏编辑按钮（编辑模式时隐藏编辑按钮）
         const editBtn = document.getElementById('editModeBtn');
@@ -2402,6 +2514,14 @@ class LearningBuddyApp {
         // 显示/隐藏编辑相关按钮
         document.getElementById('cancelEditBtn').style.display = isEdit ? 'inline-block' : 'none';
         document.getElementById('saveDetailBtn').style.display = isEdit ? 'inline-block' : 'none';
+        
+        // 如果进入编辑模式，显示所有部分
+        if (isEdit) {
+            this.showAllDetailSections();
+        } else {
+            // 如果退出编辑模式，重新应用条件显示逻辑
+            this.updateDetailSectionsVisibility(this.currentRecordDetail);
+        }
     }
 
     // 设置评分交互
@@ -2488,8 +2608,8 @@ class LearningBuddyApp {
                 // 更新现有记录
                 result = await window.apiService.updateRecord(this.currentRecordId, formData);
                 
-                // 更新本地数据
-                this.currentRecordDetail = { ...this.currentRecordDetail, ...result };
+                // 更新本地数据 - result 应该是嵌套格式的完整记录详情
+                this.currentRecordDetail = result;
                 
                 // 同时更新记录列表中的对应记录
                 const recordIndex = this.records.findIndex(r => (r.record_id || r.id) == this.currentRecordId);
