@@ -1550,7 +1550,8 @@ body {
     border-radius: var(--radius-md);
     font-size: 14px;
     resize: vertical;
-    min-height: 100px;
+    min-height: 200px;
+    max-height: 400px;
     font-family: inherit;
 }
 

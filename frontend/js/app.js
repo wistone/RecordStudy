@@ -820,7 +820,7 @@ class LearningBuddyApp {
             // Collect form data
             const title = document.getElementById('recordTitle').value;
             const duration = parseInt(document.getElementById('recordDuration').value) || 30;
-            const mood = document.getElementById('recordMood').value || '';
+            const notes = document.getElementById('recordNotes').value || '';
             
             if (!title || !this.recordData.type) {
                 console.error('表单验证失败:', { title, type: this.recordData.type, recordData: this.recordData });
@@ -832,10 +832,8 @@ class LearningBuddyApp {
                 title: title,
                 form_type: this.recordData.type,
                 duration_min: duration,
-                difficulty: this.recordData.difficulty || 3,
-                focus: this.recordData.focus || 3,
                 tags: this.recordData.tags || [],
-                mood: mood
+                body_md: notes
             };
             
             
@@ -1988,9 +1986,9 @@ class LearningBuddyApp {
         const durationInput = document.getElementById('recordDuration');
         const duration = durationInput ? parseInt(durationInput.value) || 0 : 0;
         
-        // 收集心情记录
-        const moodInput = document.getElementById('recordMood');
-        const mood = moodInput ? moodInput.value.trim() : '';
+        // 收集学习笔记
+        const notesInput = document.getElementById('recordNotes');
+        const notes = notesInput ? notesInput.value.trim() : '';
         
         // 收集标签输入框的值
         const tagInput = document.getElementById('tagInput');
@@ -2000,10 +1998,7 @@ class LearningBuddyApp {
             title,
             form_type: this.recordData.type || 'article',
             duration_min: duration,
-            difficulty: this.recordData.difficulty || 0,
-            focus: this.recordData.focus || 0,
-            energy: this.recordData.energy || 0,
-            mood,
+            body_md: notes,
             tags: [...(this.recordData.tags || [])], // 复制已有标签
             currentTagInput // 当前正在输入但未添加的标签
         };
