@@ -318,8 +318,13 @@
                                     <!-- Tags will be displayed here -->
                                 </div>
                                 <div class="tag-editor" id="tagEditor" style="display: none;">
-                                    <input type="text" id="newTagInput" class="tag-input" placeholder="输入新标签...">
-                                    <button class="btn-small btn-primary" onclick="app.addTagToRecord()">添加</button>
+                                    <div class="tag-input-container">
+                                        <input type="text" id="newTagInput" class="tag-input" placeholder="输入新标签...">
+                                        <button class="btn-small btn-primary" onclick="app.addTagToRecord()" id="addTagBtn">添加/保存</button>
+                                    </div>
+                                    <div class="tag-suggestions-detail" id="tagSuggestionsDetail">
+                                        <!-- Recommended tags will be displayed here -->
+                                    </div>
                                 </div>
                             </div>
                             
@@ -699,7 +704,7 @@
     <!-- Include API Service -->
     <script src="js/api-service.js?v=20250827-nocache"></script>
     <!-- Include Main Application -->
-    <script src="js/app.js?v=20250831-complete-logic-fix"></script>
+    <script src="js/app.js?v=20250901-arrow-function-fix"></script>
     
     <script>
         let isRedirecting = false; // 防止重复重定向

@@ -414,51 +414,85 @@ class LearningBuddyApp {
     }
 
     async showQuickRecord() {
-        document.getElementById('quickRecordModal').classList.add('active');
+        console.log('🚀 打开快速记录页面');
+        
+        // 1. 重置所有状态（关键！）
+        this.recordData = {};
         this.currentStep = 1;
+        
+        // 2. 显示模态框
+        document.getElementById('quickRecordModal').classList.add('active');
         this.showStep(1);
         
-        // 渲染动态学习形式类型
+        // 3. 渲染动态学习形式类型
         this.renderQuickRecordFormTypes();
         
-        // 渲染智能标签建议（异步操作）
-        await this.renderSmartTagSuggestions();
+        // 4. 初始化已选标签显示（先绑定事件）
+        this.renderTags();
         
-        // 确保标签建议正确显示选中状态
+        // 5. 渲染智能标签建议（异步操作）
+        try {
+            await this.renderSmartTagSuggestions();
+            console.log('✅ 标签建议渲染完成');
+        } catch (error) {
+            console.error('❌ 标签建议渲染失败:', error);
+        }
+        
+        // 6. 确保标签建议正确显示选中状态
         this.bindTagSuggestionEvents();
+        
+        console.log('✅ 快速记录页面初始化完成');
     }
 
     // 渲染智能标签建议
     async renderSmartTagSuggestions() {
+        console.log('🏷️ 开始渲染智能标签建议');
+        
         try {
-            // 默认标签
+            // 默认标签（核心常用标签）
             const defaultTags = ['英语', 'AI', '数学', '编程', '历史'];
+            console.log('🏷️ 默认标签:', defaultTags);
             
             // 获取最近使用的标签
-            const recentTags = await window.apiService.getRecentTags() || [];
+            console.log('🏷️ 正在获取最近使用的标签...');
+            let recentTags = [];
+            
+            try {
+                recentTags = await window.apiService.getRecentTags() || [];
+                console.log('🏷️ 最近标签获取成功:', recentTags);
+            } catch (apiError) {
+                console.warn('⚠️ 获取最近标签失败，使用空数组:', apiError);
+                recentTags = [];
+            }
             
             // 智能组合标签逻辑
             let finalTags = [];
             if (recentTags.length < 5) {
                 // 情况1: 最近标签少于5个，显示所有最近标签 + 所有默认标签
                 finalTags = [...recentTags, ...defaultTags.filter(t => !recentTags.includes(t))];
+                console.log('🏷️ 情况1: 最近标签 + 默认标签', finalTags);
             } else if (recentTags.length >= 5 && recentTags.length < 10) {
                 // 情况2: 最近标签5-9个，显示所有最近标签 + 补充默认标签至10个
                 const remaining = 10 - recentTags.length;
                 const unusedDefaults = defaultTags.filter(t => !recentTags.includes(t));
                 finalTags = [...recentTags, ...unusedDefaults.slice(0, remaining)];
+                console.log('🏷️ 情况2: 补充至10个标签', finalTags);
             } else {
-                // 情况3: 最近标签10个或以上，只显示最近标签
-                finalTags = recentTags;
+                // 情况3: 最近标签10个或以上，只显示最近的10个标签
+                finalTags = recentTags.slice(0, 10);
+                console.log('🏷️ 情况3: 最近10个标签', finalTags);
             }
             
             // 渲染标签建议
             this.updateTagSuggestions(finalTags);
+            console.log('✅ 智能标签建议渲染完成, 总数:', finalTags.length);
             
         } catch (error) {
-            console.error('渲染智能标签建议失败:', error);
+            console.error('❌ 渲染智能标签建议失败:', error);
             // 失败时显示默认标签
-            this.updateTagSuggestions(['英语', 'AI', '数学', '编程', '历史']);
+            const defaultTags = ['英语', 'AI', '数学', '编程', '历史'];
+            this.updateTagSuggestions(defaultTags);
+            console.log('🔄 使用默认标签作为备用方案:', defaultTags);
         }
     }
     
@@ -843,36 +877,129 @@ class LearningBuddyApp {
     }
 
     addTag(tagName) {
+        console.log('➕ 添加标签:', tagName);
+        console.log('➕ 添加前的标签:', this.recordData.tags);
+        
         if (!this.recordData.tags) {
             this.recordData.tags = [];
+            console.log('➕ 初始化标签数组');
         }
+        
         if (!this.recordData.tags.includes(tagName)) {
             this.recordData.tags.push(tagName);
+            console.log('➕ 标签添加成功, 当前标签:', this.recordData.tags);
+            
             this.renderTags();
             // 更新标签建议的选中状态
             this.updateTagSuggestionsState();
+        } else {
+            console.log('⚠️ 标签已存在，跳过添加');
         }
     }
 
     renderTags() {
         const container = document.getElementById('selectedTags');
-        if (!container) return;
+        if (!container) {
+            console.warn('⚠️ selectedTags容器不存在');
+            return;
+        }
         
         const tags = this.recordData.tags || [];
-        container.innerHTML = tags.map(tag => `
+        console.log('🏷️ 渲染已选标签:', tags);
+        
+        if (tags.length === 0) {
+            container.innerHTML = '';
+            console.log('🏷️ 没有已选标签，清空容器');
+            return;
+        }
+        
+        container.innerHTML = tags.map((tag, index) => `
             <span class="tag">
-                ${tag}
-                <span class="tag-remove" onclick="app.removeTag('${tag}')">×</span>
+                ${this.escapeHtml(tag)}
+                <span class="tag-remove" data-tag="${this.escapeHtml(tag)}" data-index="${index}" style="margin-left: 6px; cursor: pointer;">×</span>
             </span>
         `).join('');
+        
+        // 移除旧的事件监听器
+        if (this.tagRemoveHandler) {
+            container.removeEventListener('click', this.tagRemoveHandler);
+        }
+        
+        // 使用箭头函数保持词法作用域，确保this指向正确
+        this.tagRemoveHandler = (e) => {
+            console.log('🏷️ 标签区域点击事件:', e.target);
+            
+            if (e.target.classList.contains('tag-remove')) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const tagName = e.target.dataset.tag;
+                console.log('🏷️ 点击删除标签:', tagName);
+                console.log('🏷️ this.recordData:', this.recordData);
+                
+                if (tagName) {
+                    // 确保 recordData 和 tags 数组存在
+                    if (!this.recordData) {
+                        this.recordData = {};
+                        console.log('🗑️ 初始化recordData对象');
+                    }
+                    if (!this.recordData.tags) {
+                        this.recordData.tags = [];
+                        console.log('🗑️ 初始化标签数组');
+                    }
+                    
+                    console.log('🗑️ 删除标签:', tagName);
+                    console.log('🗑️ 删除前的标签:', this.recordData.tags);
+                    
+                    // 执行删除
+                    const originalLength = this.recordData.tags.length;
+                    this.recordData.tags = this.recordData.tags.filter(t => t !== tagName);
+                    
+                    console.log('🗑️ 删除后的标签:', this.recordData.tags);
+                    console.log('🗑️ 删除了', originalLength - this.recordData.tags.length, '个标签');
+                    
+                    // 重新渲染标签
+                    this.renderTags();
+                    
+                    // 更新标签建议的选中状态
+                    this.updateTagSuggestionsState();
+                    
+                    console.log('✅ 标签删除完成');
+                } else {
+                    console.error('❌ 标签名称为空', {tagName});
+                }
+            }
+        };
+        
+        container.addEventListener('click', this.tagRemoveHandler);
+        console.log('✅ 标签删除事件绑定完成, 标签数量:', tags.length);
+    }
+    
+    // HTML转义函数
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     removeTag(tagName) {
+        console.log('🗑️ 删除标签:', tagName);
+        console.log('🗑️ 删除前的标签:', this.recordData.tags);
+        
         if (!this.recordData.tags) {
             this.recordData.tags = [];
+            console.log('🗑️ 初始化标签数组');
         }
+        
+        const originalLength = this.recordData.tags.length;
         this.recordData.tags = this.recordData.tags.filter(t => t !== tagName);
+        
+        console.log('🗑️ 删除后的标签:', this.recordData.tags);
+        console.log('🗑️ 删除了', originalLength - this.recordData.tags.length, '个标签');
+        
+        // 重新渲染标签
         this.renderTags();
+        
         // 更新标签建议的选中状态
         this.updateTagSuggestionsState();
     }
@@ -2592,7 +2719,15 @@ class LearningBuddyApp {
         
         // 显示/隐藏标签编辑器
         const tagEditor = document.getElementById('tagEditor');
-        if (tagEditor) tagEditor.style.display = isEdit ? 'flex' : 'none';
+        if (tagEditor) {
+            tagEditor.style.display = isEdit ? 'block' : 'none';
+            
+            // 如果进入编辑模式，加载推荐标签并设置输入框监听
+            if (isEdit) {
+                this.loadDetailTagSuggestions();
+                this.setupSmartTagButton();
+            }
+        }
         
         // 切换 Markdown 预览和编辑模式
         this.toggleMarkdownEditMode(isEdit);
@@ -2838,8 +2973,22 @@ class LearningBuddyApp {
                 // 更新现有记录
                 result = await window.apiService.updateRecord(this.currentRecordId, formData);
                 
+                // 保存当前的标签数据（防止丢失）
+                const currentTags = this.currentRecordDetail.tags;
+                console.log('🏷️ 保存前的本地标签:', currentTags);
+                console.log('🏷️ 后端返回的数据:', result);
+                console.log('🏷️ 后端返回的标签:', result.tags);
+                
                 // 更新本地数据 - result 应该是嵌套格式的完整记录详情
                 this.currentRecordDetail = result;
+                
+                // 如果后端返回的标签为空，但本地有标签数据，则保留本地标签
+                if ((!result.tags || result.tags.length === 0) && currentTags && currentTags.length > 0) {
+                    console.log('🏷️ 后端标签为空，保留本地标签');
+                    this.currentRecordDetail.tags = currentTags;
+                } else {
+                    console.log('🏷️ 使用后端返回的标签数据');
+                }
                 
                 // 同时更新记录列表中的对应记录
                 const recordIndex = this.records.findIndex(r => (r.record_id || r.id) == this.currentRecordId);
@@ -2965,22 +3114,36 @@ class LearningBuddyApp {
             }
         }
 
-        // 标签信息（确保转换为字符串数组）
-        if (this.currentRecordDetail && this.currentRecordDetail.tags) {
+        // 标签信息（确保转换为后端期望的对象数组格式）
+        if (this.currentRecordDetail && this.currentRecordDetail.tags && this.currentRecordDetail.tags.length > 0) {
             data.tags = this.currentRecordDetail.tags.map(tag => {
+                let tagName;
                 if (typeof tag === 'string') {
-                    return tag;
+                    tagName = tag;
                 } else if (tag && tag.tag_name) {
-                    return tag.tag_name;
+                    tagName = tag.tag_name;
                 } else if (tag && tag.name) {
-                    return tag.name;
+                    tagName = tag.name;
                 } else {
-                    return String(tag);
+                    tagName = String(tag);
                 }
-            }).filter(Boolean); // 过滤掉空值
+                
+                // 返回后端期望的对象格式
+                return {
+                    tag_name: tagName,
+                    tag_type: 'category'
+                };
+            }).filter(tag => tag.tag_name); // 过滤掉空值
+            
+            console.log('🏷️ 处理后的标签对象数组:', data.tags);
+        } else {
+            console.log('🏷️ 没有标签数据或标签数组为空');
+            data.tags = [];
         }
         
         console.log('收集的数据:', data);
+        console.log('🏷️ 标签详情:', data.tags);
+        console.log('🏷️ 当前记录详情的标签:', this.currentRecordDetail?.tags);
         
         // 添加临时的debug函数到window对象
         window.debugRecordData = () => {
@@ -3001,13 +3164,15 @@ class LearningBuddyApp {
         return rating > 0 ? rating : null;
     }
 
-    // 标签管理功能
+    // 标签管理功能 - 智能添加/提交按钮
     addTagToRecord() {
         const tagInput = document.getElementById('newTagInput');
         const tagName = tagInput.value.trim();
         
+        // 如果输入框为空，则作为保存记录按钮
         if (!tagName) {
-            this.showError('请输入标签名称');
+            console.log('🏷️ 输入框为空，执行保存记录操作');
+            this.saveRecordDetail();
             return;
         }
         
@@ -3034,6 +3199,11 @@ class LearningBuddyApp {
         // 更新显示
         this.displayTags(this.currentRecordDetail.tags);
         
+        // 更新推荐标签的选中状态
+        if (this.isEditMode) {
+            this.updateDetailTagSuggestionsState();
+        }
+        
         // 清空输入框
         tagInput.value = '';
         
@@ -3048,6 +3218,178 @@ class LearningBuddyApp {
         // 更新显示
         this.displayTags(this.currentRecordDetail.tags);
         
+        // 如果在编辑模式，更新推荐标签的选中状态
+        if (this.isEditMode) {
+            this.updateDetailTagSuggestionsState();
+        }
+        
+    }
+    
+    // 设置智能标签按钮
+    setupSmartTagButton() {
+        const tagInput = document.getElementById('newTagInput');
+        const addTagBtn = document.getElementById('addTagBtn');
+        
+        if (!tagInput || !addTagBtn) return;
+        
+        // 输入框变化时更新按钮文本和样式
+        const updateButtonText = () => {
+            const hasText = tagInput.value.trim().length > 0;
+            if (hasText) {
+                addTagBtn.textContent = '添加标签';
+                addTagBtn.title = '添加此标签到记录';
+                addTagBtn.className = 'btn-small btn-primary';
+            } else {
+                addTagBtn.textContent = '保存记录';
+                addTagBtn.title = '保存整个记录';
+                addTagBtn.className = 'btn-small btn-success';
+            }
+        };
+        
+        // 监听输入变化
+        tagInput.addEventListener('input', updateButtonText);
+        tagInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                this.addTagToRecord();
+            }
+        });
+        
+        // 初始化按钮文本
+        updateButtonText();
+    }
+    
+    // 为详情页加载推荐标签
+    async loadDetailTagSuggestions() {
+        try {
+            const suggestionsContainer = document.getElementById('tagSuggestionsDetail');
+            if (!suggestionsContainer) return;
+            
+            // 使用与快速记录相同的智能标签组合逻辑
+            const defaultTags = ['英语', 'AI', '数学', '编程', '历史'];
+            const recentTags = await window.apiService.getRecentTags() || [];
+            
+            // 智能组合标签逻辑（与快速记录保持一致）
+            let finalTags = [];
+            if (recentTags.length < 5) {
+                finalTags = [...recentTags, ...defaultTags.filter(t => !recentTags.includes(t))];
+            } else if (recentTags.length >= 5 && recentTags.length < 10) {
+                const remaining = 10 - recentTags.length;
+                const unusedDefaults = defaultTags.filter(t => !recentTags.includes(t));
+                finalTags = [...recentTags, ...unusedDefaults.slice(0, remaining)];
+            } else {
+                finalTags = recentTags.slice(0, 10);
+            }
+            
+            if (finalTags && finalTags.length > 0) {
+                suggestionsContainer.innerHTML = `
+                    <div class="section-label">推荐标签（点击添加）</div>
+                    <div class="tag-suggestions">
+                        ${finalTags.map(tag => 
+                            `<span class="tag-suggestion" data-tag="${this.escapeHtml(tag)}">${this.escapeHtml(tag)}</span>`
+                        ).join('')}
+                    </div>
+                `;
+                
+                // 绑定点击事件
+                this.bindDetailTagSuggestionEvents();
+                
+                // 更新选中状态
+                this.updateDetailTagSuggestionsState();
+                
+            } else {
+                suggestionsContainer.innerHTML = `
+                    <div class="section-label">暂无推荐标签</div>
+                `;
+            }
+            
+        } catch (error) {
+            console.error('❌ 加载详情页推荐标签失败:', error);
+            // 失败时显示默认标签
+            const suggestionsContainer = document.getElementById('tagSuggestionsDetail');
+            if (suggestionsContainer) {
+                suggestionsContainer.innerHTML = `
+                    <div class="section-label">推荐标签（点击添加）</div>
+                    <div class="tag-suggestions">
+                        ${['英语', 'AI', '数学', '编程', '历史'].map(tag => 
+                            `<span class="tag-suggestion" data-tag="${tag}">${tag}</span>`
+                        ).join('')}
+                    </div>
+                `;
+                this.bindDetailTagSuggestionEvents();
+                this.updateDetailTagSuggestionsState();
+            }
+        }
+    }
+    
+    // 绑定详情页标签建议的点击事件
+    bindDetailTagSuggestionEvents() {
+        const suggestionElements = document.querySelectorAll('#tagSuggestionsDetail .tag-suggestion');
+        suggestionElements.forEach(element => {
+            element.addEventListener('click', (event) => {
+                // 阻止事件冒泡，避免触发其他点击事件
+                event.preventDefault();
+                event.stopPropagation();
+                
+                const tagName = element.dataset.tag;
+                console.log('🏷️ 点击推荐标签:', tagName);
+                
+                if (!tagName) {
+                    console.error('❌ 标签名称为空:', element);
+                    this.showError('标签数据错误');
+                    return;
+                }
+                
+                const currentTags = this.currentRecordDetail.tags || [];
+                
+                // 检查是否已存在相同标签
+                if (currentTags.some(tag => tag.tag_name === tagName || tag === tagName)) {
+                    this.showError('标签已存在');
+                    return;
+                }
+                
+                // 创建新标签对象并添加
+                const newTag = {
+                    tag_id: `temp_${Date.now()}`,
+                    tag_name: tagName,
+                    tag_type: 'category',
+                    created_by: null,
+                    is_new: true
+                };
+                
+                this.currentRecordDetail.tags = this.currentRecordDetail.tags || [];
+                this.currentRecordDetail.tags.push(newTag);
+                
+                console.log('🏷️ 添加标签成功:', newTag);
+                console.log('🏷️ 当前所有标签:', this.currentRecordDetail.tags);
+                
+                // 更新显示
+                this.displayTags(this.currentRecordDetail.tags);
+                
+                // 更新推荐标签的选中状态
+                this.updateDetailTagSuggestionsState();
+            });
+        });
+    }
+    
+    // 更新详情页推荐标签的选中状态
+    updateDetailTagSuggestionsState() {
+        const currentTags = this.currentRecordDetail.tags || [];
+        const suggestionElements = document.querySelectorAll('#tagSuggestionsDetail .tag-suggestion');
+        
+        suggestionElements.forEach(element => {
+            const tagName = element.dataset.tag;
+            const isSelected = currentTags.some(tag => 
+                (tag.tag_name && tag.tag_name === tagName) || 
+                (typeof tag === 'string' && tag === tagName)
+            );
+            
+            if (isSelected) {
+                element.classList.add('selected');
+            } else {
+                element.classList.remove('selected');
+            }
+        });
     }
 
     // Markdown 预览功能
