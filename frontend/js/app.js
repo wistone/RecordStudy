@@ -2180,16 +2180,75 @@ class LearningBuddyApp {
         }, 100);
     }
 
+    // 辅助方法：获取学习形式的显示文本
+    getFormTypeDisplayText(formType) {
+        const formTypeMap = {
+            'video': '📹 视频',
+            'podcast': '🎙️ 播客', 
+            'book': '📚 书籍',
+            'course': '🎓 课程',
+            'article': '📄 文章',
+            'exercise': '✏️ 题目',
+            'project': '💻 项目',
+            'workout': '🏃 运动',
+            'other': '📌 其他'
+        };
+        return formTypeMap[formType] || formType;
+    }
+    
+    // 辅助方法：获取资源类型的显示文本
+    getResourceTypeDisplayText(resourceType) {
+        const resourceTypeMap = {
+            'video': '视频',
+            'podcast': '播客',
+            'book': '书籍', 
+            'course': '课程',
+            'article': '文章',
+            'paper': '论文',
+            'exercise': '练习',
+            'project': '项目',
+            'workout': '运动',
+            'other': '其他'
+        };
+        return resourceTypeMap[resourceType] || resourceType;
+    }
+    
+    // 辅助方法：格式化时间显示
+    formatDateTimeDisplay(dateString) {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        const year = date.getFullYear();
+        const month = date.getMonth() + 1;
+        const day = date.getDate();
+        const hours = date.getHours();
+        const minutes = date.getMinutes();
+        return `${year}年${month}月${day}日 ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+    }
+    
+    // 辅助方法：格式化时长显示
+    formatDurationDisplay(minutes) {
+        if (!minutes || minutes === 0) return '0分钟';
+        if (minutes < 60) return `${minutes}分钟`;
+        const hours = Math.floor(minutes / 60);
+        const remainingMinutes = minutes % 60;
+        if (remainingMinutes === 0) return `${hours}小时`;
+        return `${hours}小时${remainingMinutes}分钟`;
+    }
+    
     // 填充记录详情数据
     populateRecordDetail(data) {
         // 页面标题
         document.getElementById('recordDetailTitle').textContent = `记录详情 - ${data.title}`;
         
-        // 基础信息
+        // 基础信息 - 编辑字段
         document.getElementById('recordDetailTitleField').value = data.title || '';
         document.getElementById('recordDetailFormType').value = data.form_type || '';
         
-        // 格式化时间为datetime-local格式
+        // 基础信息 - 预览显示
+        document.querySelector('#recordDetailTitlePreview .preview-value').textContent = data.title || '未命名记录';
+        document.querySelector('#recordDetailFormTypePreview .preview-value').textContent = this.getFormTypeDisplayText(data.form_type);
+        
+        // 时间信息 - 编辑字段
         if (data.occurred_at) {
             const date = new Date(data.occurred_at);
             // 获取本地时间的年月日时分，不进行时区转换
@@ -2202,8 +2261,16 @@ class LearningBuddyApp {
             document.getElementById('recordDetailOccurredAt').value = formattedDate;
         }
         
-        // 时长信息
+        // 时间信息 - 预览显示
+        document.querySelector('#recordDetailOccurredAtPreview .preview-value').textContent = 
+            this.formatDateTimeDisplay(data.occurred_at);
+        
+        // 时长信息 - 编辑字段
         document.getElementById('recordDetailDuration').value = data.duration_min || '';
+        
+        // 时长信息 - 预览显示
+        document.querySelector('#recordDetailDurationPreview .preview-value').textContent = 
+            this.formatDurationDisplay(data.duration_min);
         
         // 学习体验评分
         this.setRatingDisplay('recordDetailDifficulty', data.difficulty || 0);
@@ -2220,6 +2287,8 @@ class LearningBuddyApp {
         // 资源信息 - 在创建新记录或已有资源时显示
         if (data.resource || this.isCreatingNew) {
             document.getElementById('resourceSection').style.display = 'block';
+            
+            // 资源信息 - 编辑字段
             document.getElementById('resourceDetailTitle').value = data.resource?.title || '';
             document.getElementById('resourceDetailType').value = data.resource?.type || '';
             document.getElementById('resourceDetailAuthor').value = data.resource?.author || '';
@@ -2227,6 +2296,29 @@ class LearningBuddyApp {
             document.getElementById('resourceDetailPlatform').value = data.resource?.platform || '';
             document.getElementById('resourceDetailIsbn').value = data.resource?.isbn || '';
             document.getElementById('resourceDetailDescription').value = data.resource?.description || '';
+            
+            // 资源信息 - 预览显示
+            document.querySelector('#resourceDetailTitlePreview .preview-value').textContent = 
+                data.resource?.title || '';
+            document.querySelector('#resourceDetailTypePreview .preview-value').textContent = 
+                this.getResourceTypeDisplayText(data.resource?.type);
+            document.querySelector('#resourceDetailAuthorPreview .preview-value').textContent = 
+                data.resource?.author || '';
+            document.querySelector('#resourceDetailPlatformPreview .preview-value').textContent = 
+                data.resource?.platform || '';
+            document.querySelector('#resourceDetailIsbnPreview .preview-value').textContent = 
+                data.resource?.isbn || '';
+                
+            // 资源链接特殊处理
+            const resourceUrl = data.resource?.url || '';
+            const urlPreview = document.querySelector('#resourceDetailUrlPreview .preview-link');
+            if (resourceUrl) {
+                urlPreview.href = resourceUrl;
+                urlPreview.textContent = resourceUrl;
+                urlPreview.style.display = 'inline';
+            } else {
+                urlPreview.style.display = 'none';
+            }
         } else {
             document.getElementById('resourceSection').style.display = 'none';
         }
@@ -2256,10 +2348,8 @@ class LearningBuddyApp {
         }
         
         // 重置为查看模式
+        // 注意：setEditMode会自动调用hideEmptyResourceFields，不需要重复调用
         this.setEditMode(false);
-        
-        // 更新详情页面各部分的显示状态（仅在预览模式下隐藏空内容）
-        // 注意：setEditMode(false) 已经调用了 updateDetailSectionsVisibility，这里不需要重复调用
         
         // 确保删除按钮的初始状态是正确的
         const deleteBtn = document.getElementById('deleteRecordBtn');
@@ -2320,24 +2410,25 @@ class LearningBuddyApp {
             experienceSection.style.display = hasExperienceData ? 'block' : 'none';
         }
         
-        // 检查关联资源是否为虚拟资源
-        const isVirtualResource = data.resource &&
+        // 检查关联资源是否为虚拟资源（标题与记录相同、类型相同，且其余字段都为空）
+        const isVirtualResource = !!(data.resource &&
             data.resource.title === data.title &&
-            data.resource.type === data.form_type;
-            
-        // 检查关联资源是否有实际内容（除了标题和类型外）
-        const hasResourceContent = data.resource && (
-            (data.resource.author && data.resource.author.trim() !== '') ||
-            (data.resource.url && data.resource.url.trim() !== '') ||
-            (data.resource.platform && data.resource.platform.trim() !== '') ||
-            (data.resource.isbn && data.resource.isbn.trim() !== '') ||
-            (data.resource.description && data.resource.description.trim() !== '')
-        );
-            
+            data.resource.type === data.form_type &&
+            (!data.resource.author || data.resource.author.trim() === '') &&
+            (!data.resource.url || data.resource.url.trim() === '') &&
+            (!data.resource.platform || data.resource.platform.trim() === '') &&
+            (!data.resource.isbn || data.resource.isbn.trim() === '') &&
+            (!data.resource.description || data.resource.description.trim() === ''));
+
         const resourceSection = document.getElementById('resourceSection');
         if (resourceSection) {
-            // 只要有实际内容就显示关联资源部分，不管是否为虚拟资源
-            resourceSection.style.display = hasResourceContent ? 'block' : 'none';
+            // 无资源对象：预览整体隐藏
+            if (!data.resource) {
+                resourceSection.style.display = 'none';
+            } else {
+                // 预览模式：虚拟资源则整体隐藏；否则显示整段，由 hideEmptyResourceFields 逐项隐藏空值
+                resourceSection.style.display = isVirtualResource ? 'none' : 'block';
+            }
         }
         
         // 检查个人资源关系是否有实际内容
@@ -2515,13 +2606,154 @@ class LearningBuddyApp {
         document.getElementById('cancelEditBtn').style.display = isEdit ? 'inline-block' : 'none';
         document.getElementById('saveDetailBtn').style.display = isEdit ? 'inline-block' : 'none';
         
+        // 切换预览/编辑元素的显示
+        this.togglePreviewEditElements(isEdit);
+        
         // 如果进入编辑模式，显示所有部分
         if (isEdit) {
             this.showAllDetailSections();
+            // 恢复所有资源字段的显示
+            this.showAllResourceFields();
         } else {
             // 如果退出编辑模式，重新应用条件显示逻辑
             this.updateDetailSectionsVisibility(this.currentRecordDetail);
+            // 使用setTimeout确保DOM更新完成后再隐藏空字段
+            setTimeout(() => {
+                this.hideEmptyResourceFields();
+            }, 0);
         }
+    }
+
+    // 切换预览/编辑元素的显示
+    togglePreviewEditElements(isEdit) {
+        // 基础信息字段的预览/编辑切换
+        const basicFields = [
+            'recordDetailTitleField',
+            'recordDetailFormType', 
+            'recordDetailOccurredAt',
+            'recordDetailDuration'
+        ];
+        
+        const basicPreviews = [
+            'recordDetailTitlePreview',
+            'recordDetailFormTypePreview',
+            'recordDetailOccurredAtPreview', 
+            'recordDetailDurationPreview'
+        ];
+        
+        // 资源信息字段的预览/编辑切换
+        const resourceFields = [
+            'resourceDetailTitle',
+            'resourceDetailType',
+            'resourceDetailAuthor',
+            'resourceDetailUrl',
+            'resourceDetailPlatform',
+            'resourceDetailIsbn'
+        ];
+        
+        const resourcePreviews = [
+            'resourceDetailTitlePreview',
+            'resourceDetailTypePreview',
+            'resourceDetailAuthorPreview',
+            'resourceDetailUrlPreview',
+            'resourceDetailPlatformPreview',
+            'resourceDetailIsbnPreview'
+        ];
+        
+        // 切换基础信息的显示
+        basicFields.forEach(fieldId => {
+            const field = document.getElementById(fieldId);
+            if (field) {
+                field.style.display = isEdit ? 'block' : 'none';
+            }
+        });
+        
+        basicPreviews.forEach(previewId => {
+            const preview = document.getElementById(previewId);
+            if (preview) {
+                preview.style.display = isEdit ? 'none' : 'block';
+            }
+        });
+        
+        // 切换资源信息的显示
+        resourceFields.forEach(fieldId => {
+            const field = document.getElementById(fieldId);
+            if (field) {
+                field.style.display = isEdit ? 'block' : 'none';
+            }
+        });
+        
+        resourcePreviews.forEach(previewId => {
+            const preview = document.getElementById(previewId);
+            if (preview) {
+                preview.style.display = isEdit ? 'none' : 'block';
+            }
+        });
+    }
+
+    // 隐藏空的关联资源字段（仅在预览模式下）
+    hideEmptyResourceFields() {
+        // 只在预览模式下执行
+        if (this.isEditMode) return;
+        
+        const resourceFieldMappings = [
+            { preview: 'resourceDetailTitlePreview', field: null }, // 资源标题总是显示
+            { preview: 'resourceDetailTypePreview', field: null },  // 资源类型总是显示
+            { preview: 'resourceDetailAuthorPreview', field: 'resourceDetailAuthor' },
+            { preview: 'resourceDetailUrlPreview', field: 'resourceDetailUrl' },
+            { preview: 'resourceDetailPlatformPreview', field: 'resourceDetailPlatform' },
+            { preview: 'resourceDetailIsbnPreview', field: 'resourceDetailIsbn' }
+        ];
+        
+        resourceFieldMappings.forEach(mapping => {
+            if (!mapping.field) return; // 跳过总是显示的字段
+            
+            const previewElement = document.getElementById(mapping.preview);
+            const fieldContainer = previewElement?.closest('.detail-field');
+            
+            if (fieldContainer) {
+                // 检查预览内容是否为空
+                let isEmpty = false;
+                
+                if (mapping.preview === 'resourceDetailUrlPreview') {
+                    // URL 字段特殊处理
+                    const linkElement = previewElement.querySelector('.preview-link');
+                    isEmpty = !linkElement || !linkElement.href || linkElement.href === '' || linkElement.style.display === 'none';
+                } else {
+                    // 普通文本字段 - 检查实际内容
+                    const valueElement = previewElement.querySelector('.preview-value');
+                    if (valueElement) {
+                        const content = valueElement.textContent.trim();
+                        // 只有当内容真正为空时才隐藏
+                        isEmpty = !content || content === '' || content === '未填写';
+                    } else {
+                        isEmpty = true;
+                    }
+                }
+                
+                // 隐藏或显示字段容器
+                fieldContainer.style.display = isEmpty ? 'none' : 'block';
+            }
+        });
+    }
+
+    // 显示所有资源字段（在编辑模式下恢复所有字段显示）
+    showAllResourceFields() {
+        const resourceFieldMappings = [
+            'resourceDetailAuthorPreview',
+            'resourceDetailUrlPreview',
+            'resourceDetailPlatformPreview',
+            'resourceDetailIsbnPreview'
+        ];
+        
+        resourceFieldMappings.forEach(previewId => {
+            const previewElement = document.getElementById(previewId);
+            const fieldContainer = previewElement?.closest('.detail-field');
+            
+            if (fieldContainer) {
+                fieldContainer.style.display = 'block';
+            }
+        });
     }
 
     // 设置评分交互
@@ -2581,11 +2813,9 @@ class LearningBuddyApp {
                     this.showPage('records');
                 }, 1500); // 1.5秒后跳转，让用户看到成功消息
                 
-                // 切换到查看模式
-                this.setEditMode(false);
-                
-                // 更新页面标题和按钮
-                document.getElementById('recordDetailTitle').textContent = `记录详情 - ${result.title}`;
+                // 用最新数据重新填充并切回预览（确保预览区内容立即更新）
+                this.populateRecordDetail(result);
+                // 确保按钮文案复原
                 saveBtn.textContent = '保存修改';
                 
                 // 显示删除按钮
@@ -2642,8 +2872,8 @@ class LearningBuddyApp {
                 // 显示成功消息
                 this.showSuccessMessage('记录更新成功！');
                 
-                // 切换回查看模式
-                this.setEditMode(false);
+                // 用最新数据刷新预览（避免必须强制刷新）
+                this.populateRecordDetail(this.currentRecordDetail);
             }
             
             // 刷新汇总数据（更新统计信息）
@@ -2701,11 +2931,12 @@ class LearningBuddyApp {
         // 资源信息（如果存在资源部分）
         const resourceSection = document.getElementById('resourceSection');
         if (resourceSection && resourceSection.style.display !== 'none') {
-            // 只有当标题或类型不为空时才发送资源数据
             const resourceTitle = document.getElementById('resourceDetailTitle').value.trim();
             const resourceType = document.getElementById('resourceDetailType').value;
             
-            if (resourceTitle || resourceType) {
+            // 对于新创建的记录，只有当标题或类型不为空时才发送资源数据
+            // 对于编辑现有记录，总是发送资源数据以支持清空操作
+            if (resourceTitle || resourceType || !this.isCreatingNew) {
                 data.resource_title = resourceTitle || null;
                 data.resource_type = resourceType || null;
                 data.resource_author = document.getElementById('resourceDetailAuthor').value.trim() || null;
@@ -2717,6 +2948,23 @@ class LearningBuddyApp {
             }
         }
         
+        // 个人资源关系信息（如果存在用户资源关系部分）
+        const userResourceSection = document.getElementById('userResourceSection');
+        if (userResourceSection && userResourceSection.style.display !== 'none') {
+            const userResourceStatus = document.getElementById('userResourceStatus').value.trim();
+            const userResourceRating = this.getRatingValue('userResourceRating');
+            const userResourceReview = document.getElementById('userResourceReview').value.trim();
+            const userResourceFavorite = document.getElementById('userResourceFavorite').checked;
+            
+            // 只有当有任何非默认值时才发送用户资源数据
+            if (userResourceStatus || userResourceRating || userResourceReview || userResourceFavorite) {
+                data.user_resource_status = userResourceStatus || 'wishlist';
+                data.user_resource_rating = userResourceRating;
+                data.user_resource_review_short = userResourceReview || null;
+                data.user_resource_is_favorite = userResourceFavorite;
+            }
+        }
+
         // 标签信息（确保转换为字符串数组）
         if (this.currentRecordDetail && this.currentRecordDetail.tags) {
             data.tags = this.currentRecordDetail.tags.map(tag => {

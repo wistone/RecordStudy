@@ -305,6 +305,45 @@ async def create_record(
                 user_id=current_user_id
             )
         
+        # 处理用户资源关系（如果有相关数据）
+        if resource_id and hasattr(record_data, '__dict__'):
+            user_resource_data = {}
+            
+            # 检查是否有用户资源关系相关的字段
+            for attr_name in dir(record_data):
+                if attr_name.startswith('user_resource_'):
+                    attr_value = getattr(record_data, attr_name)
+                    if attr_value is not None:
+                        field_name = attr_name.replace('user_resource_', '')
+                        if field_name == 'status':
+                            user_resource_data['status'] = attr_value
+                        elif field_name == 'rating':
+                            user_resource_data['rating'] = attr_value
+                        elif field_name == 'review_short':
+                            user_resource_data['review_short'] = attr_value
+                        elif field_name == 'is_favorite':
+                            user_resource_data['is_favorite'] = attr_value
+            
+            if user_resource_data:
+                # 检查是否已存在用户资源关系
+                existing_user_resource = client.table('user_resources').select('*').eq('user_id', current_user_id).eq('resource_id', resource_id).execute()
+                
+                if not existing_user_resource.data:
+                    # 创建新的用户资源关系
+                    user_resource_create_data = {
+                        'user_id': current_user_id,
+                        'resource_id': resource_id,
+                        **user_resource_data
+                    }
+                    user_resource_response = client.table('user_resources').insert(user_resource_create_data).execute()
+                    if not user_resource_response.data:
+                        print(f"警告: 用户资源关系创建可能失败，resource_id: {resource_id}")
+                else:
+                    # 更新现有的用户资源关系
+                    user_resource_response = client.table('user_resources').update(user_resource_data).eq('user_id', current_user_id).eq('resource_id', resource_id).execute()
+                    if not user_resource_response.data:
+                        print(f"警告: 用户资源关系更新可能失败，resource_id: {resource_id}")
+        
         # 重新查询记录以包含标签信息（使用与get_records相同的逻辑）
         record_with_tags = await get_record_with_tags(client, record_id, current_user_id)
         
@@ -597,6 +636,10 @@ async def update_record(
             'resource_platform', 'resource_isbn', 'resource_description', 'resource_cover_url'
         }
         
+        user_resource_fields = {
+            'user_resource_status', 'user_resource_rating', 'user_resource_review_short', 'user_resource_is_favorite'
+        }
+        
         # 更新记录数据
         record_update_data = {k: v for k, v in record_update.items() if k in record_fields}
         if record_update_data:
@@ -636,6 +679,40 @@ async def update_record(
             
             if not resource_response.data:
                 print(f"警告: 资源更新可能失败，resource_id: {current_record['resource_id']}")
+        
+        # 更新用户资源关系数据（如果存在相关字段）
+        user_resource_update_data = {}
+        for k, v in record_update.items():
+            if k.startswith('user_resource_'):
+                field_name = k.replace('user_resource_', '')
+                if field_name == 'status':
+                    user_resource_update_data['status'] = v
+                elif field_name == 'rating':
+                    user_resource_update_data['rating'] = v
+                elif field_name == 'review_short':
+                    user_resource_update_data['review_short'] = v
+                elif field_name == 'is_favorite':
+                    user_resource_update_data['is_favorite'] = v
+        
+        if user_resource_update_data and current_record.get('resource_id'):
+            # 检查是否已存在用户资源关系
+            existing_user_resource = client.table('user_resources').select('*').eq('user_id', current_user_id).eq('resource_id', current_record['resource_id']).execute()
+            
+            if existing_user_resource.data:
+                # 更新现有的用户资源关系
+                user_resource_response = client.table('user_resources').update(user_resource_update_data).eq('user_id', current_user_id).eq('resource_id', current_record['resource_id']).execute()
+                if not user_resource_response.data:
+                    print(f"警告: 用户资源关系更新可能失败，resource_id: {current_record['resource_id']}")
+            else:
+                # 创建新的用户资源关系
+                user_resource_create_data = {
+                    'user_id': current_user_id,
+                    'resource_id': current_record['resource_id'],
+                    **user_resource_update_data
+                }
+                user_resource_response = client.table('user_resources').insert(user_resource_create_data).execute()
+                if not user_resource_response.data:
+                    print(f"警告: 用户资源关系创建可能失败，resource_id: {current_record['resource_id']}")
         
         # 处理标签更新（如果有标签数据）
         if 'tags' in record_update:

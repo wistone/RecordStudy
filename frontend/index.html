@@ -222,10 +222,16 @@
                                 <div class="detail-fields">
                                     <div class="detail-field">
                                         <label>记录标题</label>
+                                        <!-- 编辑模式的输入框 -->
                                         <input type="text" id="recordDetailTitleField" class="detail-input" readonly>
+                                        <!-- 预览模式的显示 -->
+                                        <div class="detail-preview" id="recordDetailTitlePreview">
+                                            <span class="preview-value"></span>
+                                        </div>
                                     </div>
                                     <div class="detail-field">
                                         <label>学习形式</label>
+                                        <!-- 编辑模式的选择框 -->
                                         <select id="recordDetailFormType" class="detail-select" disabled>
                                             <option value="video">📹 视频</option>
                                             <option value="podcast">🎙️ 播客</option>
@@ -237,14 +243,28 @@
                                             <option value="workout">🏃 运动</option>
                                             <option value="other">📌 其他</option>
                                         </select>
+                                        <!-- 预览模式的显示 -->
+                                        <div class="detail-preview" id="recordDetailFormTypePreview">
+                                            <span class="preview-value preview-badge"></span>
+                                        </div>
                                     </div>
                                     <div class="detail-field">
                                         <label>发生时间</label>
+                                        <!-- 编辑模式的时间输入 -->
                                         <input type="datetime-local" id="recordDetailOccurredAt" class="detail-input" readonly>
+                                        <!-- 预览模式的显示 -->
+                                        <div class="detail-preview" id="recordDetailOccurredAtPreview">
+                                            <span class="preview-value"></span>
+                                        </div>
                                     </div>
                                     <div class="detail-field">
                                         <label>总时长 (分钟)</label>
+                                        <!-- 编辑模式的数字输入 -->
                                         <input type="number" id="recordDetailDuration" class="detail-input" readonly>
+                                        <!-- 预览模式的显示 -->
+                                        <div class="detail-preview" id="recordDetailDurationPreview">
+                                            <span class="preview-value preview-duration"></span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -308,10 +328,16 @@
                                 <div class="detail-fields" id="resourceFields">
                                     <div class="detail-field">
                                         <label>资源标题</label>
+                                        <!-- 编辑模式的输入框 -->
                                         <input type="text" id="resourceDetailTitle" class="detail-input" readonly>
+                                        <!-- 预览模式的显示 -->
+                                        <div class="detail-preview" id="resourceDetailTitlePreview">
+                                            <span class="preview-value"></span>
+                                        </div>
                                     </div>
                                     <div class="detail-field">
                                         <label>资源类型</label>
+                                        <!-- 编辑模式的选择框 -->
                                         <select id="resourceDetailType" class="detail-select" disabled>
                                             <option value="video">视频</option>
                                             <option value="podcast">播客</option>
@@ -324,25 +350,50 @@
                                             <option value="workout">运动</option>
                                             <option value="other">其他</option>
                                         </select>
+                                        <!-- 预览模式的显示 -->
+                                        <div class="detail-preview" id="resourceDetailTypePreview">
+                                            <span class="preview-value preview-badge"></span>
+                                        </div>
                                     </div>
                                     <div class="detail-field">
                                         <label>作者信息</label>
+                                        <!-- 编辑模式的输入框 -->
                                         <input type="text" id="resourceDetailAuthor" class="detail-input" readonly>
+                                        <!-- 预览模式的显示 -->
+                                        <div class="detail-preview" id="resourceDetailAuthorPreview">
+                                            <span class="preview-value"></span>
+                                        </div>
                                     </div>
                                     <div class="detail-field">
                                         <label>资源链接</label>
+                                        <!-- 编辑模式的输入框 -->
                                         <input type="url" id="resourceDetailUrl" class="detail-input" readonly>
+                                        <!-- 预览模式的显示 -->
+                                        <div class="detail-preview" id="resourceDetailUrlPreview">
+                                            <a class="preview-link" href="" target="_blank" rel="noopener noreferrer"></a>
+                                        </div>
                                     </div>
                                     <div class="detail-field">
                                         <label>平台信息</label>
+                                        <!-- 编辑模式的输入框 -->
                                         <input type="text" id="resourceDetailPlatform" class="detail-input" readonly>
+                                        <!-- 预览模式的显示 -->
+                                        <div class="detail-preview" id="resourceDetailPlatformPreview">
+                                            <span class="preview-value"></span>
+                                        </div>
                                     </div>
                                     <div class="detail-field">
                                         <label>ISBN (仅书籍)</label>
+                                        <!-- 编辑模式的输入框 -->
                                         <input type="text" id="resourceDetailIsbn" class="detail-input" readonly>
+                                        <!-- 预览模式的显示 -->
+                                        <div class="detail-preview" id="resourceDetailIsbnPreview">
+                                            <span class="preview-value preview-isbn"></span>
+                                        </div>
                                     </div>
                                     <div class="detail-field">
                                         <label>资源描述</label>
+                                        <!-- 资源描述保持原样（按需求） -->
                                         <textarea id="resourceDetailDescription" class="detail-textarea" readonly></textarea>
                                     </div>
                                 </div>
@@ -648,7 +699,7 @@
     <!-- Include API Service -->
     <script src="js/api-service.js?v=20250827-nocache"></script>
     <!-- Include Main Application -->
-    <script src="js/app.js?v=20250830-final-fix"></script>
+    <script src="js/app.js?v=20250831-complete-logic-fix"></script>
     
     <script>
         let isRedirecting = false; // 防止重复重定向

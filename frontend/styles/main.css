@@ -975,7 +975,7 @@ body {
     font-size: 18px;
     font-weight: 600;
     color: var(--text-primary);
-    margin: 0 0 20px 0;
+    margin: 0 0 12px 0;
     padding-bottom: 12px;
     border-bottom: 1px solid var(--border-color);
 }
@@ -989,7 +989,7 @@ body {
 .detail-field {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    /* gap: 6px; */
 }
 
 .detail-field label {
@@ -1193,7 +1193,7 @@ body {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    margin-bottom: 12px;
+    /* margin-bottom: 12px; */
 }
 
 .tag-item {
@@ -2428,5 +2428,142 @@ body {
     .chart-labels span {
         width: 24px;
         font-size: 10px;
+    }
+}
+
+/* ===============================
+   预览模式现代化样式
+   =============================== */
+
+/* 预览容器基础样式 */
+.detail-preview {
+    display: none; /* 默认隐藏，由 JavaScript 控制显示 */
+    /* margin-top: 4px; */
+}
+
+/* 预览值的通用样式 */
+.preview-value {
+    display: inline-block;
+    padding: 10px 14px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-size: 14px;
+    font-weight: 500;
+    min-height: 20px;
+    line-height: 1.4;
+    transition: all 0.2s ease;
+    box-shadow: var(--shadow-sm);
+}
+
+.preview-value:empty::before {
+    content: '未填写';
+    color: var(--text-tertiary);
+    font-style: italic;
+}
+
+/* 徽章样式的预览元素 */
+.preview-badge {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: white;
+    font-weight: 600;
+    border: none;
+    box-shadow: var(--shadow-md);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+/* 时长显示特殊样式 */
+.preview-duration {
+    background: linear-gradient(135deg, var(--secondary-color), #059669);
+    color: white;
+    border: none;
+    font-weight: 600;
+    box-shadow: var(--shadow-md);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+/* ISBN 显示样式 */
+.preview-isbn {
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Courier New', monospace;
+    background: var(--bg-tertiary);
+    border-color: var(--border-color);
+    letter-spacing: 1px;
+    font-size: 13px;
+}
+
+/* 链接预览样式 */
+.preview-link {
+    display: inline;
+    color: #2563eb;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    max-width: 320px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    position: relative;
+    background-image: linear-gradient(120deg, transparent 0%, transparent 50%, rgba(37, 99, 235, 0.1) 50%);
+    background-size: 220% 100%;
+    background-position: 100% 0;
+    padding: 2px 4px;
+    border-radius: 3px;
+}
+
+.preview-link::before {
+    content: '🔗 ';
+    margin-right: 4px;
+    opacity: 0.8;
+}
+
+.preview-link:hover {
+    color: #1d4ed8;
+    background-position: 0 0;
+    text-shadow: 0 0 8px rgba(37, 99, 235, 0.3);
+}
+
+.preview-link:active {
+    color: #1e40af;
+    transform: scale(0.98);
+}
+
+/* 预览模式下的字段布局优化 */
+.detail-field {
+    position: relative;
+    /* margin-bottom: 4px; */
+}
+
+.detail-field label {
+    display: block;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    opacity: 0.8;
+}
+
+/* 悬停效果增强 */
+.preview-value:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+    .preview-link {
+        max-width: 240px;
+    }
+    
+    .preview-value {
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+    
+    .detail-field {
+        margin-bottom: 14px;
     }
 }
