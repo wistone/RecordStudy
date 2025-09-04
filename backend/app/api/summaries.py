@@ -6,6 +6,12 @@ from app.core.auth import get_current_user_id
 from supabase import create_client
 from app.core.config import settings
 import json
+import sys
+import logging
+
+# 配置日志
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # 用户时区设置（默认为中国时间，后续可以从用户配置中获取）
 USER_TIMEZONE = pytz.timezone('Asia/Shanghai')
@@ -162,29 +168,7 @@ async def get_dashboard_summary(
             for k, v in type_stats.items()
         ]
         
-        # 计算当前连续学习天数
-        consecutive_days = 0
-        local_now = datetime.now(USER_TIMEZONE)
-        today = local_now.date()
-        yesterday = today - timedelta(days=1)
-        
-        # 如果今天有学习记录，从今天开始往前计算连续天数
-        if today in learning_dates:
-            check_date = today
-            while check_date in learning_dates:
-                consecutive_days += 1
-                check_date = check_date - timedelta(days=1)
-        
-        # 如果今天没有学习但昨天有，从昨天开始往前计算连续天数
-        elif yesterday in learning_dates:
-            check_date = yesterday
-            while check_date in learning_dates:
-                consecutive_days += 1
-                check_date = check_date - timedelta(days=1)
-        
-        # 如果今天和昨天都没有学习记录，连续天数为0
-        else:
-            consecutive_days = 0
+        # 注意: consecutive_days 在 init endpoint 中全局计算，这里不需要计算
         
         # 今日统计（使用本地时区）
         today_records = []
@@ -378,6 +362,8 @@ async def get_init_data(
                 for k, v in type_stats.items()
             ]
             
+            # 注意: consecutive_days 在 init endpoint 中全局计算，这里不需要重复计算
+            
             return {
                 "period_days": days,
                 "total_records": total_records,
@@ -387,7 +373,7 @@ async def get_init_data(
                 "avg_focus": round(avg_focus, 1),
                 "daily_avg_duration": round(total_duration / max(learning_days, 1), 1) if total_duration else 0,
                 "type_distribution": type_distribution,
-                "learning_dates": list(learning_dates)
+                "learning_dates": [d.isoformat() for d in learning_dates]  # 序列化date对象
             }
         
         def get_recent_records():
@@ -533,22 +519,42 @@ async def get_init_data(
             user_profile = profile_future.result()
         
         # 计算连续学习天数
-        learning_dates = set(week_summary.get('learning_dates', []))
+        learning_dates_str = week_summary.get('learning_dates', [])
+        # 将ISO字符串转换回date对象
+        learning_dates = set()
+        for date_str in learning_dates_str:
+            try:
+                learning_dates.add(datetime.fromisoformat(date_str).date())
+            except (ValueError, AttributeError):
+                continue
+        
         consecutive_days = 0
         local_now = datetime.now(USER_TIMEZONE)
         today = local_now.date()
         yesterday = today - timedelta(days=1)
+        
+        # 调试日志
+        print(f"🔍 连续天数计算调试:")
+        print(f"   今天: {today}")
+        print(f"   昨天: {yesterday}")
+        print(f"   学习日期: {sorted(learning_dates)}")
+        print(f"   今天在学习日期中: {today in learning_dates}")
+        print(f"   昨天在学习日期中: {yesterday in learning_dates}")
         
         if today in learning_dates:
             check_date = today
             while check_date in learning_dates:
                 consecutive_days += 1
                 check_date = check_date - timedelta(days=1)
+                print(f"   检查日期 {check_date}: 连续天数 = {consecutive_days}")
         elif yesterday in learning_dates:
             check_date = yesterday
             while check_date in learning_dates:
                 consecutive_days += 1
                 check_date = check_date - timedelta(days=1)
+                print(f"   检查日期 {check_date}: 连续天数 = {consecutive_days}")
+        
+        print(f"   最终连续天数: {consecutive_days}")
         
         # 计算今日统计
         today_records = [r for r in recent_records if r.get('occurred_at') and utc_to_local_date(safe_parse_datetime(r['occurred_at'])) == today]
@@ -559,7 +565,7 @@ async def get_init_data(
         init_data = {
             "dashboard": {
                 "week": {**week_summary, "streak_days": consecutive_days, "today": {"count": today_count, "duration_minutes": today_duration}},
-                "month": month_summary
+                "month": {**month_summary, "streak_days": consecutive_days}
             },
             "recent_records": {
                 "records": recent_records,

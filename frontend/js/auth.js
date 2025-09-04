@@ -37,7 +37,15 @@ class AuthService {
             
             // 监听认证状态变化
             this.supabase.auth.onAuthStateChange((event, session) => {
+                const oldUser = this.user;
                 this.user = session?.user || null;
+                
+                // 如果用户切换了，清除所有缓存
+                if (oldUser && this.user && oldUser.id !== this.user.id) {
+                    console.log('🔄 检测到用户切换，清除所有缓存');
+                    this.clearAllUserCaches();
+                }
+                
                 this.notifyListeners();
                 
                 // 处理认证事件
@@ -154,11 +162,18 @@ class AuthService {
         try {
             
             const { error } = await this.supabase.auth.signOut();
+            
+            // 清除所有用户相关的缓存
+            if (this.user?.id) {
+                this.clearUserCache(this.user.id);
+            }
+            
             this.user = null;
             
             if (error) {
                 console.error('❌ 登出失败:', error);
             } else {
+                console.log('✅ 登出成功');
             }
             
             return { error };
@@ -301,6 +316,38 @@ class AuthService {
             valid: errors.length === 0,
             errors: errors
         };
+    }
+    
+    // 清除特定用户的所有缓存
+    clearUserCache(userId) {
+        try {
+            // 清除 localStorage 中的用户相关缓存
+            const cacheKey = `app_init_data_${userId}`;
+            localStorage.removeItem(cacheKey);
+            
+            // 也清除通用的缓存键（防止遗留数据）
+            localStorage.removeItem('app_init_data');
+            
+            console.log(`🧹 已清除用户 ${userId.substring(0, 8)} 的缓存`);
+        } catch (error) {
+            console.error('❌ 清除用户缓存失败:', error);
+        }
+    }
+    
+    // 清除所有用户的缓存（用户切换时）
+    clearAllUserCaches() {
+        try {
+            // 清除所有以 'app_init_data_' 开头的缓存
+            for (let i = localStorage.length - 1; i >= 0; i--) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith('app_init_data')) {
+                    localStorage.removeItem(key);
+                }
+            }
+            console.log('🧹 已清除所有用户缓存');
+        } catch (error) {
+            console.error('❌ 清除所有用户缓存失败:', error);
+        }
     }
 }
 

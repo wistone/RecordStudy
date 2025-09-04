@@ -39,15 +39,29 @@ class LearningBuddyApp {
         try {
             this.showLoading(true);
             
-            // 🚀 简单前端缓存：检查是否有最近的数据（2分钟内）
-            const cacheKey = 'app_init_data';
-            const cacheExpiry = 2 * 60 * 1000; // 2分钟
-            const cached = this.getFromCache(cacheKey);
+            // 🔄 确保用户认证状态已完全更新（防止用户切换时的竞态条件）
+            await new Promise(resolve => setTimeout(resolve, 50));
             
+            // 🚀 简单前端缓存：检查是否有最近的数据（2分钟内）
+            const currentUser = window.authService?.getCurrentUser();
+            const userId = currentUser?.id || 'anonymous';
+            const cacheKey = `app_init_data_${userId}`;
+            const cacheExpiry = 2 * 60 * 1000; // 2分钟
+            
+            const cached = this.getFromCache(cacheKey);
             if (cached) {
-                console.log('🗄️ 使用缓存数据');
-                this.processInitData(cached);
-                return;
+                // 🔒 验证缓存数据属于当前用户，防止用户切换后的数据泄露
+                const cachedUserId = cached.user_profile?.user_id;
+                if (cachedUserId && cachedUserId === userId) {
+                    console.log('🗄️ 使用缓存数据');
+                    this.processInitData(cached);
+                    return;
+                } else {
+                    console.log('⚠️ 缓存数据用户不匹配，清除缓存并重新获取', { cachedUserId, currentUserId: userId });
+                    this.removeFromCache(cacheKey);
+                    // 同时清除可能的旧用户缓存
+                    window.authService?.clearAllUserCaches();
+                }
             }
             
             // 🚀 使用新的聚合初始化API，一次调用获取所有数据
@@ -1480,6 +1494,12 @@ class LearningBuddyApp {
             if (window.apiService) {
                 window.apiService.clearCache('summaries');
             }
+            
+            // 清除用户相关的聚合缓存（localStorage）
+            const currentUser = window.authService?.getCurrentUser();
+            const userId = currentUser?.id || 'anonymous';
+            const cacheKey = `app_init_data_${userId}`;
+            this.removeFromCache(cacheKey);
             
         } catch (error) {
             console.error('❌ 清除缓存失败:', error);
