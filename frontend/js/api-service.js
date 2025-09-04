@@ -147,6 +147,12 @@ class APIService {
         return data;
     }
 
+    // 🚀 新的聚合初始化API - 一次获取所有首页数据
+    async getInitData() {
+        const data = await this.request(`/summaries/init`);
+        return data;
+    }
+
     // === 学习记录相关API ===
 
     async getRecords(params = {}) {

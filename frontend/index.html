@@ -770,10 +770,13 @@
             }
         });
         
-        async function updateUserDisplay(user) {
+        async function updateUserDisplay(user, profileData = null) {
             try {
-                // 获取完整的用户资料信息
-                const profile = await window.apiService.request('/profiles/current', 'GET');
+                // 🚀 如果传入了profile数据，直接使用；否则才从API获取
+                let profile = profileData;
+                if (!profile) {
+                    profile = await window.apiService.request('/profiles/current', 'GET');
+                }
                 
                 if (profile && !profile.error) {
                     const displayName = profile.display_name || authService.getDisplayName();

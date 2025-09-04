@@ -34,52 +34,74 @@ class LearningBuddyApp {
         // }
     }
 
-    // Load data from backend API - 优化版本
+    // Load data from backend API - 超级优化版本
     async loadData() {
         try {
             this.showLoading(true);
             
-            // 🚀 使用新的汇总API，大幅减少数据传输和处理时间
+            // 🚀 简单前端缓存：检查是否有最近的数据（2分钟内）
+            const cacheKey = 'app_init_data';
+            const cacheExpiry = 2 * 60 * 1000; // 2分钟
+            const cached = this.getFromCache(cacheKey);
             
-            // 并行加载不同时间段的汇总数据，使用独立错误处理避免一个失败导致全部失败
-            const [weekResult, monthResult, recentResult] = await Promise.allSettled([
-                window.apiService.getDashboardSummary(7),  // 最近7天汇总(本周)
-                window.apiService.getDashboardSummary(30), // 最近30天汇总(本月)
-                window.apiService.getRecords({ limit: 20, skip: 0 })  // 最近20条记录（使用完整API获取标签）
-            ]);
+            if (cached) {
+                console.log('🗄️ 使用缓存数据');
+                this.processInitData(cached);
+                return;
+            }
             
-            // 安全地提取数据，处理部分失败的情况
-            this.weekSummary = weekResult.status === 'fulfilled' ? weekResult.value : null;
-            this.monthSummary = monthResult.status === 'fulfilled' ? monthResult.value : null;
-            this.dashboardSummary = this.weekSummary || this.monthSummary; // 保持兼容性
+            // 🚀 使用新的聚合初始化API，一次调用获取所有数据
+            const initData = await window.apiService.getInitData();
             
-            
-            // 转换最近记录格式（保持兼容性）
-            const recentRecordsData = recentResult.status === 'fulfilled' ? recentResult.value : null;
-            this.records = recentRecordsData?.records ? 
-                recentRecordsData.records.map(record => this.convertBackendRecord(record)) : [];
-            
+            // 缓存数据
+            this.setToCache(cacheKey, initData, cacheExpiry);
+            this.processInitData(initData);
             
         } catch (error) {
             console.error('❌ 加载数据失败:', error);
             this.showError('加载数据失败，请检查网络连接和后端服务');
-            this.records = [];
-            this.dashboardSummary = null;
+            
+            // 降级到原有API调用方式
+            try {
+                console.log('🔄 降级到原有API调用方式...');
+                const [weekResult, monthResult, recentResult] = await Promise.allSettled([
+                    window.apiService.getDashboardSummary(7),
+                    window.apiService.getDashboardSummary(30), 
+                    window.apiService.getRecords({ limit: 20, skip: 0 })
+                ]);
+                
+                this.weekSummary = weekResult.status === 'fulfilled' ? weekResult.value : null;
+                this.monthSummary = monthResult.status === 'fulfilled' ? monthResult.value : null;
+                this.dashboardSummary = this.weekSummary || this.monthSummary;
+                
+                const recentRecordsData = recentResult.status === 'fulfilled' ? recentResult.value : null;
+                this.records = recentRecordsData?.records ? 
+                    recentRecordsData.records.map(record => this.convertBackendRecord(record)) : [];
+                    
+            } catch (fallbackError) {
+                console.error('❌ 降级方案也失败:', fallbackError);
+                this.records = [];
+                this.dashboardSummary = null;
+            }
         } finally {
             this.showLoading(false);
         }
     }
     
-    // Load user's form types (default + custom)
+    // Load user's form types (default + custom) - 优化版本
     async loadFormTypes() {
         try {
-            // Add a small delay to ensure authentication is ready
-            await new Promise(resolve => setTimeout(resolve, 100));
+            // 如果已经在初始化时加载了，直接使用
+            if (this.formTypes && this.formTypes.length > 0) {
+                console.log('📝 使用已缓存的学习形式类型:', this.formTypes.length);
+                this.refreshFormTypeDisplay();
+                return;
+            }
             
+            // 否则单独加载
+            await new Promise(resolve => setTimeout(resolve, 100));
             this.formTypes = await window.apiService.getFormTypes();
             console.log('📝 已加载学习形式类型:', this.formTypes.length);
-            
-            // Refresh the UI to show correct icons
             this.refreshFormTypeDisplay();
         } catch (error) {
             console.error('❌ 加载学习形式类型失败:', error);
@@ -3428,6 +3450,81 @@ class LearningBuddyApp {
             
             // 更新预览内容
             this.updateMarkdownPreview(textarea.value);
+        }
+    }
+
+    // 🚀 缓存工具方法
+    getFromCache(key) {
+        try {
+            const cached = localStorage.getItem(`app_cache_${key}`);
+            if (!cached) return null;
+            
+            const data = JSON.parse(cached);
+            const now = Date.now();
+            
+            if (now > data.expiry) {
+                localStorage.removeItem(`app_cache_${key}`);
+                return null;
+            }
+            
+            return data.value;
+        } catch (e) {
+            console.warn('缓存读取失败:', e);
+            return null;
+        }
+    }
+    
+    setToCache(key, value, ttlMs = 5 * 60 * 1000) {
+        try {
+            const data = {
+                value: value,
+                expiry: Date.now() + ttlMs
+            };
+            localStorage.setItem(`app_cache_${key}`, JSON.stringify(data));
+        } catch (e) {
+            console.warn('缓存写入失败:', e);
+        }
+    }
+    
+    clearCache(keyPattern = null) {
+        try {
+            const keys = Object.keys(localStorage);
+            keys.forEach(key => {
+                if (key.startsWith('app_cache_')) {
+                    if (!keyPattern || key.includes(keyPattern)) {
+                        localStorage.removeItem(key);
+                    }
+                }
+            });
+        } catch (e) {
+            console.warn('缓存清理失败:', e);
+        }
+    }
+
+    // 🚀 数据处理方法
+    processInitData(initData) {
+        // 提取仪表盘数据
+        this.weekSummary = initData.dashboard?.week || null;
+        this.monthSummary = initData.dashboard?.month || null;
+        this.dashboardSummary = this.weekSummary || this.monthSummary;
+        
+        // 提取最近记录并转换格式（保持兼容性）
+        const recentRecordsData = initData.recent_records || {};
+        this.records = recentRecordsData.records ? 
+            recentRecordsData.records.map(record => this.convertBackendRecord(record)) : [];
+        
+        // 设置表单类型数据（避免单独API调用）
+        if (initData.form_types) {
+            this.formTypes = initData.form_types;
+        }
+        
+        // 🚀 设置用户信息，避免额外的 /profiles/current 调用
+        if (initData.user_profile) {
+            this.userProfile = initData.user_profile;
+            // 更新用户显示信息，传入profile数据避免重复API调用
+            if (window.updateUserDisplay && typeof window.updateUserDisplay === 'function') {
+                window.updateUserDisplay(window.authService?.getCurrentUser(), initData.user_profile);
+            }
         }
     }
 }

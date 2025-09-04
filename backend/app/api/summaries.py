@@ -313,3 +313,270 @@ async def get_cache_stats():
         "expired_entries": expired_entries,
         "cache_duration_seconds": CACHE_DURATION
     }
+
+@router.get("/init", response_model=Dict[str, Any])
+async def get_init_data(
+    current_user_id: str = Depends(get_current_user_id)
+):
+    """聚合初始化API - 一次调用获取所有首页数据（优化版）"""
+    
+    # 检查缓存
+    cache_key = get_cache_key(current_user_id, "init_data", "")
+    cached_data = get_from_cache(cache_key)
+    if cached_data:
+        return cached_data
+    
+    try:
+        client = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
+        
+        # 并行查询所有必要数据
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        
+        def get_dashboard_data(days):
+            """获取指定天数的仪表盘数据"""
+            utc_start, utc_end = get_local_date_boundaries(days - 1)
+            
+            response = client.table('records')\
+                .select('occurred_at, duration_min, form_type, difficulty, focus')\
+                .eq('user_id', current_user_id)\
+                .gte('occurred_at', utc_start.isoformat())\
+                .lt('occurred_at', utc_end.isoformat())\
+                .execute()
+            
+            records = response.data or []
+            total_records = len(records)
+            total_duration = sum(r.get('duration_min', 0) or 0 for r in records)
+            
+            # 计算学习天数
+            learning_dates = set()
+            for record in records:
+                if record.get('occurred_at'):
+                    utc_datetime = safe_parse_datetime(record['occurred_at'])
+                    if utc_datetime:
+                        local_date = utc_to_local_date(utc_datetime)
+                        learning_dates.add(local_date)
+            
+            learning_days = len(learning_dates)
+            
+            # 计算平均分数
+            valid_difficulty = [r['difficulty'] for r in records if r.get('difficulty') is not None]
+            valid_focus = [r['focus'] for r in records if r.get('focus') is not None]
+            avg_difficulty = sum(valid_difficulty) / len(valid_difficulty) if valid_difficulty else 0
+            avg_focus = sum(valid_focus) / len(valid_focus) if valid_focus else 0
+            
+            # 按类型统计
+            type_stats = {}
+            for record in records:
+                form_type = record.get('form_type', 'other')
+                if form_type not in type_stats:
+                    type_stats[form_type] = {'count': 0, 'duration': 0}
+                type_stats[form_type]['count'] += 1
+                type_stats[form_type]['duration'] += record.get('duration_min', 0) or 0
+            
+            type_distribution = [
+                {"type": k, "count": v['count'], "total_duration": v['duration']}
+                for k, v in type_stats.items()
+            ]
+            
+            return {
+                "period_days": days,
+                "total_records": total_records,
+                "total_duration_hours": round(total_duration / 60, 1) if total_duration else 0,
+                "learning_days": learning_days,
+                "avg_difficulty": round(avg_difficulty, 1),
+                "avg_focus": round(avg_focus, 1),
+                "daily_avg_duration": round(total_duration / max(learning_days, 1), 1) if total_duration else 0,
+                "type_distribution": type_distribution,
+                "learning_dates": list(learning_dates)
+            }
+        
+        def get_recent_records():
+            """获取最近记录"""
+            # 先获取基础记录信息
+            response = client.table('records')\
+                .select('record_id, title, form_type, occurred_at, duration_min, resource_id')\
+                .eq('user_id', current_user_id)\
+                .order('occurred_at', desc=True)\
+                .limit(20)\
+                .execute()
+            
+            records = []
+            resource_ids = []
+            
+            # 收集有resource_id的记录
+            for record in response.data or []:
+                records.append({
+                    "record_id": record['record_id'],  # 使用record_id字段保持一致
+                    "title": record['title'],
+                    "form_type": record['form_type'],  # 使用form_type字段保持一致
+                    "occurred_at": record['occurred_at'],
+                    "duration_min": record.get('duration_min', 0),
+                    "resource_id": record.get('resource_id'),
+                    "tags": []
+                })
+                if record.get('resource_id'):
+                    resource_ids.append(record['resource_id'])
+            
+            # 如果有resource_ids，批量获取标签
+            if resource_ids:
+                try:
+                    # 获取资源标签关联
+                    resource_tags_response = client.table('resource_tags')\
+                        .select('resource_id, tag_id')\
+                        .eq('user_id', current_user_id)\
+                        .in_('resource_id', resource_ids)\
+                        .execute()
+                    
+                    if resource_tags_response.data:
+                        # 收集标签ID
+                        tag_ids = list(set([rt['tag_id'] for rt in resource_tags_response.data]))
+                        
+                        if tag_ids:
+                            # 获取标签详情
+                            tags_response = client.table('tags')\
+                                .select('tag_id, tag_name')\
+                                .in_('tag_id', tag_ids)\
+                                .execute()
+                            
+                            # 创建tag_id到name的映射
+                            tag_map = {tag['tag_id']: tag['tag_name'] for tag in tags_response.data or []}
+                            
+                            # 创建resource_id到tags的映射
+                            resource_tag_map = {}
+                            for rt in resource_tags_response.data:
+                                resource_id = rt['resource_id']
+                                tag_name = tag_map.get(rt['tag_id'])
+                                if tag_name:
+                                    if resource_id not in resource_tag_map:
+                                        resource_tag_map[resource_id] = []
+                                    resource_tag_map[resource_id].append({
+                                        'name': tag_name,
+                                        'color': '#gray'  # 默认颜色，可以后续优化
+                                    })
+                            
+                            # 为记录添加标签
+                            for record in records:
+                                if record['resource_id'] and record['resource_id'] in resource_tag_map:
+                                    record['tags'] = resource_tag_map[record['resource_id']]
+                                # 清除resource_id字段
+                                del record['resource_id']
+                
+                except Exception as e:
+                    print(f"获取标签失败: {e}")
+                    # 继续处理，只是没有标签信息
+            
+            # 清除所有记录的resource_id字段
+            for record in records:
+                record.pop('resource_id', None)
+            
+            return records
+        
+        def get_form_types():
+            """获取学习形式类型"""
+            try:
+                # 使用正确的表名：user_form_types
+                response = client.table('user_form_types')\
+                    .select('*')\
+                    .eq('user_id', current_user_id)\
+                    .order('display_order', desc=False)\
+                    .order('type_id', desc=False)\
+                    .execute()
+                
+                return response.data or []
+                
+            except Exception as e:
+                print(f"获取表单类型失败: {e}")
+                # 返回空列表，让前端使用默认值
+                return []
+
+        def get_user_profile():
+            """获取用户资料"""
+            try:
+                response = client.table('profiles')\
+                    .select('*')\
+                    .eq('user_id', current_user_id)\
+                    .limit(1)\
+                    .execute()
+                
+                if response.data:
+                    return response.data[0]
+                else:
+                    # 如果没有profile记录，返回基本信息
+                    return {
+                        'user_id': current_user_id,
+                        'display_name': None,
+                        'avatar_url': None
+                    }
+                
+            except Exception as e:
+                print(f"获取用户资料失败: {e}")
+                return {
+                    'user_id': current_user_id,
+                    'display_name': None,
+                    'avatar_url': None
+                }
+        
+        # 使用线程池并行执行查询
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            # 提交所有查询任务
+            week_future = executor.submit(get_dashboard_data, 7)
+            month_future = executor.submit(get_dashboard_data, 30)
+            records_future = executor.submit(get_recent_records)
+            form_types_future = executor.submit(get_form_types)
+            profile_future = executor.submit(get_user_profile)
+            
+            # 等待所有任务完成
+            week_summary = week_future.result()
+            month_summary = month_future.result()
+            recent_records = records_future.result()
+            form_types = form_types_future.result()
+            user_profile = profile_future.result()
+        
+        # 计算连续学习天数
+        learning_dates = set(week_summary.get('learning_dates', []))
+        consecutive_days = 0
+        local_now = datetime.now(USER_TIMEZONE)
+        today = local_now.date()
+        yesterday = today - timedelta(days=1)
+        
+        if today in learning_dates:
+            check_date = today
+            while check_date in learning_dates:
+                consecutive_days += 1
+                check_date = check_date - timedelta(days=1)
+        elif yesterday in learning_dates:
+            check_date = yesterday
+            while check_date in learning_dates:
+                consecutive_days += 1
+                check_date = check_date - timedelta(days=1)
+        
+        # 计算今日统计
+        today_records = [r for r in recent_records if r.get('occurred_at') and utc_to_local_date(safe_parse_datetime(r['occurred_at'])) == today]
+        today_count = len(today_records)
+        today_duration = sum(r.get('duration_min', 0) for r in today_records)
+        
+        # 组装最终响应
+        init_data = {
+            "dashboard": {
+                "week": {**week_summary, "streak_days": consecutive_days, "today": {"count": today_count, "duration_minutes": today_duration}},
+                "month": month_summary
+            },
+            "recent_records": {
+                "records": recent_records,
+                "total": len(recent_records)
+            },
+            "form_types": form_types,
+            "user_profile": user_profile,
+            "cache_timestamp": datetime.now().isoformat()
+        }
+        
+        # 缓存结果（3分钟）
+        set_cache(cache_key, init_data, 180)
+        
+        return init_data
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to fetch initialization data: {str(e)}"
+        )
