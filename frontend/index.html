@@ -78,6 +78,22 @@
             <!-- Home Page -->
             <div id="homePage" class="page active">
                 <div class="container">
+                    <!-- Mobile Navigation Tabs -->
+                    <div class="mobile-tabs">
+                        <a href="#/" class="mobile-tab active" data-page="home">
+                            <span class="mobile-tab-icon">🏠</span>
+                            <span class="mobile-tab-label">首页</span>
+                        </a>
+                        <a href="#/analytics" class="mobile-tab" data-page="analytics">
+                            <span class="mobile-tab-icon">📊</span>
+                            <span class="mobile-tab-label">数据分析</span>
+                        </a>
+                        <a href="#/records" class="mobile-tab" data-page="records">
+                            <span class="mobile-tab-icon">📝</span>
+                            <span class="mobile-tab-label">学习记录</span>
+                        </a>
+                    </div>
+
                     <!-- Hero Section -->
                     <section class="hero">
                         <h1 class="hero-title">记录学习，见证成长</h1>
@@ -161,8 +177,24 @@
             <!-- Records Page -->
             <div id="recordsPage" class="page">
                 <div class="container">
+                    <!-- Mobile Navigation Tabs -->
+                    <div class="mobile-tabs">
+                        <a href="#/" class="mobile-tab" data-page="home">
+                            <span class="mobile-tab-icon">🏠</span>
+                            <span class="mobile-tab-label">首页</span>
+                        </a>
+                        <a href="#/analytics" class="mobile-tab" data-page="analytics">
+                            <span class="mobile-tab-icon">📊</span>
+                            <span class="mobile-tab-label">数据分析</span>
+                        </a>
+                        <a href="#/records" class="mobile-tab active" data-page="records">
+                            <span class="mobile-tab-icon">📝</span>
+                            <span class="mobile-tab-label">学习记录</span>
+                        </a>
+                    </div>
+
                     <div class="page-header">
-                        <h1>学习记录</h1>
+                        <h1 class="page-title">学习记录</h1>
                         <button class="btn btn-primary" onclick="app.showQuickRecord()">新建记录</button>
                     </div>
                     
@@ -455,6 +487,22 @@
             <!-- Analytics Page -->
             <div id="analyticsPage" class="page">
                 <div class="container">
+                    <!-- Mobile Navigation Tabs -->
+                    <div class="mobile-tabs">
+                        <a href="#/" class="mobile-tab" data-page="home">
+                            <span class="mobile-tab-icon">🏠</span>
+                            <span class="mobile-tab-label">首页</span>
+                        </a>
+                        <a href="#/analytics" class="mobile-tab active" data-page="analytics">
+                            <span class="mobile-tab-icon">📊</span>
+                            <span class="mobile-tab-label">数据分析</span>
+                        </a>
+                        <a href="#/records" class="mobile-tab" data-page="records">
+                            <span class="mobile-tab-icon">📝</span>
+                            <span class="mobile-tab-label">学习记录</span>
+                        </a>
+                    </div>
+
                     <h1 class="page-title">数据分析</h1>
                     
                     <!-- Time Stats and Calendar Row -->
@@ -668,7 +716,7 @@
                                 <!-- Detailed Record Link -->
                                 <div class="detailed-record-link">
                                     <a href="javascript:void(0)" onclick="app.createNewDetailedRecord()">
-                                        需要填写更多信息？前往详细记录 →
+                                        需要填写更多信息？<br>前往详细记录 →
                                     </a>
                                 </div>
                             </div>

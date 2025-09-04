@@ -48,6 +48,7 @@ class LearningBuddyApp {
             const cacheKey = `app_init_data_${userId}`;
             const cacheExpiry = 2 * 60 * 1000; // 2分钟
             
+            
             const cached = this.getFromCache(cacheKey);
             if (cached) {
                 // 🔒 验证缓存数据属于当前用户，防止用户切换后的数据泄露
@@ -428,9 +429,10 @@ class LearningBuddyApp {
         // Page-specific initialization
         if (page === 'home') {
             // 重新加载首页数据以确保最新状态
-            this.loadData();
-            this.updateDashboard();
-            this.renderRecentRecords();
+            this.loadData().then(() => {
+                this.updateDashboard();
+                this.renderRecentRecords();
+            });
         } else if (page === 'records') {
             // 渲染学习形式类型过滤器
             this.renderTypeFilter();
@@ -2406,8 +2408,14 @@ class LearningBuddyApp {
     
     // 填充记录详情数据
     populateRecordDetail(data) {
-        // 页面标题
-        document.getElementById('recordDetailTitle').textContent = `记录详情 - ${data.title}`;
+        // 页面标题 - 根据屏幕尺寸显示不同格式
+        const isMobile = window.innerWidth <= 768;
+        const titleElement = document.getElementById('recordDetailTitle');
+        if (isMobile) {
+            titleElement.textContent = data.title;
+        } else {
+            titleElement.textContent = `记录详情 - ${data.title}`;
+        }
         
         // 基础信息 - 编辑字段
         document.getElementById('recordDetailTitleField').value = data.title || '';
