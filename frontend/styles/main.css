@@ -2699,13 +2699,27 @@ body {
     
     /* 移动端记录详情页面优化 */
     .record-detail-layout {
-        grid-template-columns: 1fr !important;
+        display: flex !important;
+        flex-direction: column !important;
         gap: 16px !important;
     }
     
+    /* 移动端列顺序：学习笔记 → 基础信息 → 标签管理+关联资源 */
+    .record-detail-left {
+        order: 2;
+    }
+    
+    .record-detail-middle {
+        order: 1;
+    }
+    
+    .record-detail-right {
+        order: 3;
+    }
+    
     .detail-section {
-        padding: 12px 16px;
-        margin-bottom: 12px;
+        padding: 10px 16px;
+        margin-bottom: 8px;
         border-radius: var(--radius-md);
         background: var(--bg-primary);
         border: 1px solid var(--border-color);
@@ -2718,7 +2732,7 @@ body {
     }
     
     .detail-field {
-        margin-bottom: 8px;
+        margin-bottom: 4px;
     }
     
     .detail-field label {
@@ -2746,6 +2760,7 @@ body {
         gap: 6px;
         flex-wrap: wrap;
         align-items: center;
+        justify-content: flex-end;
         width: 100%;
         margin-top: 8px;
     }
@@ -2759,6 +2774,7 @@ body {
     #recordDetailPage .page-header h1 {
         margin-bottom: 0;
         width: 100%;
+        font-size: 24px;
     }
     
     .page-actions .btn {
@@ -2950,6 +2966,6 @@ body {
     }
     
     .detail-field {
-        margin-bottom: 14px;
+        /* margin-bottom: 14px; */
     }
 }
