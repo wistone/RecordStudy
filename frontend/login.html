@@ -764,17 +764,17 @@
                 }
             }
 
-            checkAuthState() {
-                // 延迟检查，避免与注册流程冲突
-                setTimeout(() => {
-                    console.log('🔍 检查登录页认证状态:', authService.isAuthenticated());
-                    
-                    // 检查是否已登录
-                    if (authService.isAuthenticated()) {
-                        console.log('✅ 已登录，重定向到首页');
-                        window.location.href = 'index.html';
-                    }
-                }, 200);
+            async checkAuthState() {
+                // 等待认证服务完全初始化
+                await authService.waitForInitialization();
+                
+                console.log('🔍 检查登录页认证状态:', authService.isAuthenticated());
+                
+                // 检查是否已登录
+                if (authService.isAuthenticated()) {
+                    console.log('✅ 已登录，重定向到首页');
+                    window.location.href = 'index.html';
+                }
             }
         }
 

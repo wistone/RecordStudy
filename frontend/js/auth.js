@@ -3,13 +3,14 @@ class AuthService {
     constructor() {
         this.supabase = null;
         this.user = null;
+        this.isInitialized = false; // 添加初始化状态标记
         
         // 初始化Supabase
         this.initializeSupabase();
         
         this.listeners = [];
         
-        // 初始化用户状态
+        // 异步初始化用户状态
         this.initialize();
     }
 
@@ -70,15 +71,15 @@ class AuthService {
 
     // 初始化用户状态
     async initialize() {
-        
-
         try {
             const { data: { user } } = await this.supabase.auth.getUser();
             this.user = user;
+            this.isInitialized = true; // 标记初始化完成
             
             if (user) {
+                console.log('✅ 用户已登录:', user.email);
             } else {
-                // 未找到登录用户
+                console.log('ℹ️ 未找到登录用户');
             }
             
             // 延迟通知，避免与页面初始化逻辑冲突
@@ -87,6 +88,7 @@ class AuthService {
             }, 50);
         } catch (error) {
             console.error('❌ 初始化认证状态失败:', error);
+            this.isInitialized = true; // 即使失败也标记为已初始化，避免无限等待
         }
     }
 
@@ -191,6 +193,23 @@ class AuthService {
     // 检查是否已登录
     isAuthenticated() {
         return this.user !== null;
+    }
+
+    // 等待认证服务初始化完成
+    async waitForInitialization() {
+        let attempts = 0;
+        const maxAttempts = 50; // 最多等待5秒 (50 * 100ms)
+        
+        while (!this.isInitialized && attempts < maxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            attempts++;
+        }
+        
+        if (!this.isInitialized) {
+            console.warn('⚠️ 认证服务初始化超时');
+        }
+        
+        return this.isInitialized;
     }
 
     // 创建用户档案

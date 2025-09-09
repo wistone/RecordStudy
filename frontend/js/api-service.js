@@ -12,6 +12,9 @@ class APIService {
             throw new Error('认证服务未初始化');
         }
 
+        // 确保认证服务已初始化
+        await window.authService.waitForInitialization();
+
         const { data: { session }, error } = await window.authService.supabase.auth.getSession();
         if (error || !session) {
             throw new Error('用户未登录');

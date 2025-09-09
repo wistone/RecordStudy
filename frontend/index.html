@@ -765,28 +765,29 @@
         let isRedirecting = false; // 防止重复重定向
 
         // Authentication check and redirect logic
-        document.addEventListener('DOMContentLoaded', () => {
-            // 延迟检查，确保认证服务完全初始化
-            setTimeout(() => {
-                console.log('🔍 检查首页认证状态:', authService.isAuthenticated());
-                
-                // Check authentication status
-                if (!authService.isAuthenticated() && !isRedirecting) {
-                    console.log('❌ 未登录，重定向到登录页');
-                    isRedirecting = true;
-                    window.location.href = 'login.html';
-                    return;
-                }
-                
-                // 如果已登录，更新用户显示
-                if (authService.isAuthenticated()) {
-                    updateUserDisplay(authService.getCurrentUser());
-                }
-                
-                // 监听认证状态变化
-                authService.onAuthStateChange((user) => {
-                    console.log('👤 首页认证状态变化:', !!user);
-                    if (!user && !isRedirecting) {
+        document.addEventListener('DOMContentLoaded', async () => {
+            // 等待认证服务完全初始化
+            await authService.waitForInitialization();
+            
+            console.log('🔍 检查首页认证状态:', authService.isAuthenticated());
+            
+            // Check authentication status
+            if (!authService.isAuthenticated() && !isRedirecting) {
+                console.log('❌ 未登录，重定向到登录页');
+                isRedirecting = true;
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            // 如果已登录，更新用户显示
+            if (authService.isAuthenticated()) {
+                updateUserDisplay(authService.getCurrentUser());
+            }
+            
+            // 监听认证状态变化
+            authService.onAuthStateChange((user) => {
+                console.log('👤 首页认证状态变化:', !!user);
+                if (!user && !isRedirecting) {
                         isRedirecting = true;
                         window.location.href = 'login.html';
                     } else if (user) {
