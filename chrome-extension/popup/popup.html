@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学习搭子控制面板</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 320px;
+            min-height: 200px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            font-size: 14px;
+            line-height: 1.5;
+            color: #333;
+            background: #ffffff;
+        }
+
+        .header {
+            padding: 16px;
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .header p {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 16px;
+        }
+
+        .toggle-section {
+            margin-bottom: 20px;
+        }
+
+        .toggle-button {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #4CAF50;
+            border-radius: 8px;
+            background: transparent;
+            color: #4CAF50;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .toggle-button:hover {
+            background: #f8f9fa;
+        }
+
+        .toggle-button.active {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .toggle-button.active:hover {
+            background: #45a049;
+        }
+
+        .status {
+            margin-top: 12px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            text-align: center;
+        }
+
+        .status.enabled {
+            background: #e8f5e8;
+            color: #2e7d32;
+            border: 1px solid #c8e6c9;
+        }
+
+        .status.disabled {
+            background: #fafafa;
+            color: #666;
+            border: 1px solid #e0e0e0;
+        }
+
+        .width-control {
+            margin-bottom: 20px;
+        }
+
+        .width-control label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        .width-slider {
+            width: 100%;
+            margin-bottom: 8px;
+        }
+
+        .width-input {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #ddd;
+            outline: none;
+        }
+
+        .width-input::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #4CAF50;
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .width-display {
+            text-align: center;
+            font-size: 13px;
+            color: #666;
+        }
+
+        .links {
+            border-top: 1px solid #eee;
+            padding-top: 16px;
+        }
+
+        .link-button {
+            display: block;
+            width: 100%;
+            padding: 10px 12px;
+            margin-bottom: 8px;
+            text-decoration: none;
+            color: #007bff;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            font-size: 13px;
+            text-align: center;
+            transition: all 0.2s ease;
+        }
+
+        .link-button:hover {
+            background: #e9ecef;
+            border-color: #adb5bd;
+            text-decoration: none;
+        }
+
+        .link-button:last-child {
+            margin-bottom: 0;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .error {
+            color: #dc3545;
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-size: 13px;
+            margin-top: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>
+            <img src="../icons/icon16.png" alt="学习搭子" width="20" height="20">
+            学习搭子
+        </h1>
+        <p>在任何网页旁边打开学习追踪侧边栏</p>
+    </div>
+
+    <div class="content">
+        <div id="loading" class="loading">
+            正在加载...
+        </div>
+
+        <div id="controls" style="display: none;">
+            <div class="toggle-section">
+                <button id="toggleButton" class="toggle-button">
+                    <span id="toggleIcon">▶</span>
+                    <span id="toggleText">开启侧边栏</span>
+                </button>
+                <div id="status" class="status disabled">
+                    侧边栏已关闭
+                </div>
+            </div>
+
+            <div class="width-control">
+                <label for="widthSlider">侧边栏宽度: <span id="widthValue">20%</span></label>
+                <input type="range" id="widthSlider" class="width-input" min="15" max="45" value="20" step="1">
+                <div class="width-display">
+                    拖拽调整 15% - 45%
+                </div>
+            </div>
+
+            <div class="links">
+                <a href="https://your-study-buddy.onrender.com" target="_blank" class="link-button">
+                    🌐 打开完整版网站
+                </a>
+                <a href="#" id="helpLink" class="link-button">
+                    ❓ 使用帮助
+                </a>
+            </div>
+
+            <div id="error" class="error" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>

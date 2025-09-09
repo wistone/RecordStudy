@@ -1,0 +1,273 @@
+/* Learning Buddy Sidebar Styles */
+
+/* Reset and base styles for sidebar */
+.learning-buddy-sidebar {
+  all: initial !important;
+  position: fixed !important;
+  top: 0 !important;
+  right: 0 !important;
+  width: 20% !important;
+  height: 100vh !important;
+  background: #ffffff !important;
+  border-left: 1px solid #e0e0e0 !important;
+  box-shadow: -4px 0 12px rgba(0, 0, 0, 0.1) !important;
+  z-index: 2147483647 !important; /* Maximum z-index */
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+  color: #333333 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  opacity: 0 !important;
+  transform: translateX(100%) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Visible state */
+.learning-buddy-sidebar.learning-buddy-visible {
+  opacity: 1 !important;
+  transform: translateX(0) !important;
+}
+
+/* Resize handle */
+.learning-buddy-resize-handle {
+  position: absolute !important;
+  left: 0 !important;
+  top: 0 !important;
+  width: 4px !important;
+  height: 100% !important;
+  background: transparent !important;
+  cursor: col-resize !important;
+  z-index: 10 !important;
+  border-left: 2px solid transparent !important;
+  transition: border-color 0.2s ease !important;
+}
+
+.learning-buddy-resize-handle:hover {
+  border-left-color: #4CAF50 !important;
+}
+
+.learning-buddy-resize-handle:active {
+  border-left-color: #2196F3 !important;
+  background: rgba(33, 150, 243, 0.1) !important;
+}
+
+/* Header */
+.learning-buddy-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 12px 16px !important;
+  background: #f8f9fa !important;
+  border-bottom: 1px solid #e9ecef !important;
+  min-height: 48px !important;
+  flex-shrink: 0 !important;
+}
+
+.learning-buddy-title {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  font-weight: 600 !important;
+  font-size: 16px !important;
+  color: #2c3e50 !important;
+}
+
+.learning-buddy-title img {
+  width: 18px !important;
+  height: 18px !important;
+  object-fit: contain !important;
+}
+
+/* Close button */
+.learning-buddy-close-btn {
+  width: 24px !important;
+  height: 24px !important;
+  border-radius: 12px !important;
+  background: #ffffff !important;
+  border: 1px solid #dee2e6 !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 16px !important;
+  font-weight: bold !important;
+  color: #6c757d !important;
+  transition: all 0.2s ease !important;
+  user-select: none !important;
+}
+
+.learning-buddy-close-btn:hover {
+  background: #f8f9fa !important;
+  color: #dc3545 !important;
+  border-color: #dc3545 !important;
+}
+
+.learning-buddy-close-btn:active {
+  transform: scale(0.95) !important;
+}
+
+/* Iframe container */
+.learning-buddy-iframe-container {
+  flex: 1 !important;
+  position: relative !important;
+  overflow: hidden !important;
+  background: #ffffff !important;
+}
+
+/* Iframe */
+.learning-buddy-iframe {
+  width: 100% !important;
+  height: 100% !important;
+  border: none !important;
+  background: #ffffff !important;
+  display: block !important;
+}
+
+/* Error state */
+.learning-buddy-error {
+  padding: 40px 20px !important;
+  text-align: center !important;
+  color: #6c757d !important;
+  background: #f8f9fa !important;
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.learning-buddy-error h3 {
+  margin: 0 0 16px 0 !important;
+  font-size: 18px !important;
+  color: #dc3545 !important;
+  font-weight: 600 !important;
+}
+
+.learning-buddy-error p {
+  margin: 8px 0 !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+}
+
+.learning-buddy-error button {
+  margin-top: 20px !important;
+  padding: 8px 16px !important;
+  background: #007bff !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 4px !important;
+  cursor: pointer !important;
+  font-size: 14px !important;
+  transition: background-color 0.2s ease !important;
+}
+
+.learning-buddy-error button:hover {
+  background: #0056b3 !important;
+}
+
+/* Body modifications when sidebar is active */
+body.learning-buddy-active {
+  transition: margin-right 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+  .learning-buddy-sidebar {
+    width: 35% !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .learning-buddy-sidebar {
+    width: 50% !important;
+  }
+  
+  .learning-buddy-header {
+    padding: 8px 12px !important;
+  }
+  
+  .learning-buddy-title {
+    font-size: 14px !important;
+  }
+  
+  .learning-buddy-close-btn {
+    width: 20px !important;
+    height: 20px !important;
+    font-size: 14px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .learning-buddy-sidebar {
+    width: 80% !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .learning-buddy-sidebar {
+    border-left: 2px solid #000000 !important;
+  }
+  
+  .learning-buddy-header {
+    border-bottom: 2px solid #000000 !important;
+  }
+  
+  .learning-buddy-close-btn {
+    border: 2px solid #000000 !important;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .learning-buddy-sidebar,
+  .learning-buddy-resize-handle,
+  .learning-buddy-close-btn,
+  body.learning-buddy-active {
+    transition: none !important;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .learning-buddy-sidebar {
+    background: #2d3748 !important;
+    border-left-color: #4a5568 !important;
+    color: #e2e8f0 !important;
+  }
+  
+  .learning-buddy-header {
+    background: #1a202c !important;
+    border-bottom-color: #4a5568 !important;
+  }
+  
+  .learning-buddy-title {
+    color: #f7fafc !important;
+  }
+  
+  .learning-buddy-close-btn {
+    background: #4a5568 !important;
+    border-color: #718096 !important;
+    color: #e2e8f0 !important;
+  }
+  
+  .learning-buddy-close-btn:hover {
+    background: #2d3748 !important;
+    color: #fc8181 !important;
+    border-color: #fc8181 !important;
+  }
+  
+  .learning-buddy-iframe-container {
+    background: #2d3748 !important;
+  }
+  
+  .learning-buddy-error {
+    background: #2d3748 !important;
+    color: #a0aec0 !important;
+  }
+  
+  .learning-buddy-error h3 {
+    color: #fc8181 !important;
+  }
+}
