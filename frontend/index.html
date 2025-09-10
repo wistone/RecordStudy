@@ -765,36 +765,43 @@
         let isRedirecting = false; // 防止重复重定向
 
         // Authentication check and redirect logic
-        document.addEventListener('DOMContentLoaded', async () => {
-            // 等待认证服务完全初始化
-            await authService.waitForInitialization();
-            
-            console.log('🔍 检查首页认证状态:', authService.isAuthenticated());
-            
-            // Check authentication status
-            if (!authService.isAuthenticated() && !isRedirecting) {
-                console.log('❌ 未登录，重定向到登录页');
-                isRedirecting = true;
-                window.location.href = 'login.html';
-                return;
-            }
-            
-            // 如果已登录，更新用户显示
-            if (authService.isAuthenticated()) {
-                updateUserDisplay(authService.getCurrentUser());
-            }
-            
-            // 监听认证状态变化
-            authService.onAuthStateChange((user) => {
-                console.log('👤 首页认证状态变化:', !!user);
-                if (!user && !isRedirecting) {
+        document.addEventListener('DOMContentLoaded', () => {
+            // 使用异步立即执行函数，避免阻塞其他脚本
+            (async () => {
+                try {
+                    // 等待认证服务完全初始化
+                    await authService.waitForInitialization();
+                    
+                    console.log('🔍 检查首页认证状态:', authService.isAuthenticated());
+                    
+                    // Check authentication status
+                    if (!authService.isAuthenticated() && !isRedirecting) {
+                        console.log('❌ 未登录，重定向到登录页');
                         isRedirecting = true;
                         window.location.href = 'login.html';
-                    } else if (user) {
-                        updateUserDisplay(user);
+                        return;
                     }
-                });
-            }, 100);
+                    
+                    // 如果已登录，更新用户显示
+                    if (authService.isAuthenticated()) {
+                        updateUserDisplay(authService.getCurrentUser());
+                    }
+                    
+                    // 监听认证状态变化
+                    authService.onAuthStateChange((user) => {
+                        console.log('👤 首页认证状态变化:', !!user);
+                        if (!user && !isRedirecting) {
+                            isRedirecting = true;
+                            window.location.href = 'login.html';
+                        } else if (user) {
+                            updateUserDisplay(user);
+                        }
+                    });
+                } catch (error) {
+                    console.error('❌ 认证检查失败:', error);
+                    // 即使认证检查失败，也不阻塞其他功能
+                }
+            })();
         });
 
         // 监听页面可见性变化，当从个人资料页面返回时刷新用户信息
@@ -915,8 +922,10 @@
             const userMenu = document.getElementById('userMenu');
             const userProfile = document.querySelector('.user-profile');
             
-            userMenu.classList.toggle('show');
-            userProfile.classList.toggle('open');
+            if (userMenu && userProfile) {
+                userMenu.classList.toggle('show');
+                userProfile.classList.toggle('open');
+            }
         }
         
         // Close menu when clicking outside
