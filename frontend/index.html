@@ -641,7 +641,7 @@
 
         <!-- Quick Record Modal -->
         <div id="quickRecordModal" class="modal">
-            <div class="modal-content">
+            <div class="modal-content template-modal">
                 <div class="modal-header">
                     <h2>快速记录</h2>
                     <button class="modal-close" onclick="app.closeQuickRecord()">×</button>
@@ -649,8 +649,8 @@
                 <div class="modal-body">
                     <!-- Tab Navigation -->
                     <div class="tabs">
-                        <button class="tab-btn active" onclick="app.switchRecordTab('form')">表单记录</button>
-                        <button class="tab-btn" onclick="app.switchRecordTab('quick')">随手记</button>
+                        <button class="tab-btn active" id="quickFormTabBtn" onclick="app.switchRecordTab('form')">表单记录</button>
+                        <button class="tab-btn" id="quickTemplateTabBtn" onclick="app.switchRecordTab('template')">模板记录</button>
                     </div>
 
                     <!-- Form Record -->
@@ -730,15 +730,15 @@
                         </form>
                     </div>
 
-                    <!-- Quick Note -->
-                    <div id="quickNote" class="tab-content">
-                        <div class="quick-note-form">
-                            <textarea class="quick-input" placeholder="记录一句话、粘贴链接或上传图片..." rows="4"></textarea>
-                            <div class="quick-actions">
-                                <button class="btn-icon-action" title="上传图片">📷</button>
-                                <button class="btn-icon-action" title="添加链接">🔗</button>
+                    <!-- Template Record -->
+                    <div id="templateRecord" class="tab-content">
+                        <div class="template-record-container">
+                            <div class="template-record-empty" id="templateRecordEmpty" style="display: none;">
+                                <p>暂无记录模板，前往 <a href="settings.html" target="_blank">设置页面</a> 创建。</p>
                             </div>
-                            <button class="btn btn-primary btn-block" onclick="app.saveQuickNote()">智能识别并保存</button>
+                            <div class="template-record-list" id="templateRecordList">
+                                <!-- Template items rendered here -->
+                            </div>
                         </div>
                     </div>
                 </div>

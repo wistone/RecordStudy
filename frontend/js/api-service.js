@@ -223,6 +223,39 @@ class APIService {
         this.clearCache('stats');
     }
 
+    // === 记录模板相关API ===
+
+    async getRecordTemplates(params = {}) {
+        const { skip = 0, limit = 50, search = null } = params;
+        const queryParams = new URLSearchParams({ skip, limit });
+        if (search) queryParams.append('search', search);
+        return await this.request(`/record-templates?${queryParams.toString()}`);
+    }
+
+    async createRecordTemplate(templateData) {
+        return await this.request('/record-templates', {
+            method: 'POST',
+            body: templateData
+        });
+    }
+
+    async getRecordTemplate(templateId) {
+        return await this.request(`/record-templates/${templateId}`);
+    }
+
+    async updateRecordTemplate(templateId, updateData) {
+        return await this.request(`/record-templates/${templateId}`, {
+            method: 'PUT',
+            body: updateData
+        });
+    }
+
+    async deleteRecordTemplate(templateId) {
+        await this.request(`/record-templates/${templateId}`, {
+            method: 'DELETE'
+        });
+    }
+
     // === 资源相关API ===
 
     async getResources(params = {}) {

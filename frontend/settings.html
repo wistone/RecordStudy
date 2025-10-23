@@ -89,6 +89,11 @@
             margin-bottom: 20px;
         }
 
+        .section-actions {
+            display: flex;
+            gap: 10px;
+        }
+
         .section-title {
             font-size: 18px;
             font-weight: 600;
@@ -273,6 +278,39 @@
             max-width: 500px;
             width: 90%;
             max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .template-modal {
+            max-width: 760px;
+        }
+
+        .template-modal .modal-header,
+        .template-detail-modal .modal-header {
+            margin-left: -24px;
+            margin-right: -24px;
+            padding-left: 24px;
+            padding-right: 24px;
+        }
+
+        .template-modal .modal-title,
+        .template-detail-modal .modal-title {
+            margin-left: 0;
+        }
+
+        .template-detail-modal {
+            max-width: 1100px;
+            width: 95%;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .template-detail-body {
+            max-height: 70vh;
             overflow-y: auto;
         }
 
@@ -534,8 +572,8 @@
             <button class="settings-tab active" onclick="showTab('form-types')">
                 📝 学习形式管理
             </button>
-            <button class="settings-tab" onclick="showTab('account')">
-                👤 账户设置
+            <button class="settings-tab" onclick="showTab('templates')">
+                📦 模板管理
             </button>
             <button class="settings-tab" onclick="showTab('appearance')">
                 🎨 外观设置
@@ -563,12 +601,33 @@
             </div>
         </div>
 
-        <!-- Account Settings Tab -->
-        <div id="account-tab" class="settings-content">
-            <div class="coming-soon">
-                <div class="coming-soon-icon">👤</div>
-                <div class="coming-soon-title">账户设置</div>
-                <div class="coming-soon-text">此功能正在开发中，敬请期待</div>
+        <!-- Template Management Tab -->
+        <div id="templates-tab" class="settings-content">
+            <div class="form-types-section templates-section">
+                <div class="section-header">
+                    <h2 class="section-title">记录模板</h2>
+                    <div class="section-actions">
+                        <button class="btn btn-primary" onclick="showTemplateCreateModal()">
+                            ➕ 新增模板
+                        </button>
+                    </div>
+                </div>
+
+                <p class="settings-subtitle" style="margin-bottom: 20px;">
+                    预设常用记录信息，创建新记录时即可一键套用。
+                </p>
+
+                <div id="templates-alert"></div>
+
+                <div id="templatesEmptyState" class="coming-soon" style="display: none;">
+                    <div class="coming-soon-icon">🗂️</div>
+                    <div class="coming-soon-title">还没有模板</div>
+                    <div class="coming-soon-text">创建模板以便在记录时快速复用</div>
+                </div>
+
+                <div class="records-list full" id="templateList">
+                    <!-- Template cards render here -->
+                </div>
             </div>
         </div>
 
@@ -658,6 +717,255 @@
         </div>
     </div>
 
+    <!-- Quick Template Modal -->
+    <div id="templateQuickModal" class="modal hidden">
+        <div class="modal-content template-modal">
+            <div class="modal-header">
+                <h3 class="modal-title" id="templateModalTitle">新增记录模板</h3>
+                <button class="modal-close" onclick="closeTemplateQuickModal()">×</button>
+            </div>
+
+            <form id="templateQuickForm" onsubmit="submitTemplateQuickForm(event)">
+                <div class="template-form-steps">
+                    <!-- Step 1: Title -->
+                    <div class="form-step active" data-step="1">
+                        <label class="form-label">标题</label>
+                        <input type="text" class="form-input" id="templateTitleInput" placeholder="输入模板标题..." required>
+                    </div>
+
+                    <!-- Step 2: Form type -->
+                    <div class="form-step" data-step="2">
+                        <label class="form-label">选择形式类别</label>
+                        <div class="type-grid" id="templateTypeGrid">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Step 3: Tags -->
+                <div class="form-step" data-step="3">
+                    <label class="form-label">内容标签（可多选）</label>
+                    <div class="tag-input-container">
+                        <input type="text" class="tag-input" id="templateTagInput" placeholder="输入标签，例如：英语、编程、AI..." maxlength="20">
+                        <div class="tag-suggestions" id="templateTagSuggestions"></div>
+                    </div>
+                    <div class="selected-tags" id="templateSelectedTags"></div>
+                </div>
+
+                    <!-- Step 4: Duration -->
+                    <div class="form-step" data-step="4">
+                        <label class="form-label">学习时长（分钟）</label>
+                        <input type="number" class="form-input" id="templateDurationInput" placeholder="25" min="0">
+                        <div class="duration-presets">
+                            <button type="button" class="preset-btn" data-duration="25">25分钟</button>
+                            <button type="button" class="preset-btn" data-duration="45">45分钟</button>
+                            <button type="button" class="preset-btn" data-duration="60">1小时</button>
+                            <button type="button" class="preset-btn" data-duration="90">1.5小时</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-nav">
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-secondary" onclick="templatePrevStep()">上一步</button>
+                        <button type="button" class="btn btn-primary" onclick="templateNextStep()">下一步</button>
+                        <button type="submit" class="btn btn-success" id="templateSubmitBtn" style="display: none;">
+                            保存模板
+                        </button>
+                    </div>
+                    <div class="detailed-record-link">
+                        <a href="javascript:void(0)" onclick="openTemplateDetailFromQuick()">
+                            需要填写更多信息？<br>前往详细记录 →
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Template Detail Modal -->
+    <div id="templateDetailModal" class="modal hidden">
+        <div class="modal-content template-detail-modal">
+            <div class="modal-header">
+                <h3 class="modal-title" id="templateDetailHeading">模板详情</h3>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" onclick="closeTemplateDetailModal()">关闭</button>
+                    <button class="btn btn-secondary" id="templateDetailCancelBtn" onclick="cancelTemplateEdit()" style="display: none;">取消</button>
+                    <button class="btn btn-primary" id="templateDetailEditBtn" onclick="toggleTemplateEditMode()">编辑</button>
+                    <button class="btn btn-success" id="templateDetailSaveBtn" onclick="saveTemplateDetail()" style="display: none;">保存修改</button>
+                    <button class="btn btn-danger" onclick="confirmTemplateDelete()">删除模板</button>
+                </div>
+            </div>
+
+            <div class="template-detail-body">
+                <div class="record-detail-layout three-column">
+                    <div class="record-detail-left">
+                        <div class="detail-section">
+                            <h3>基础信息</h3>
+                            <div class="detail-fields">
+                                <div class="detail-field">
+                                    <label>模板标题</label>
+                                    <input type="text" id="templateDetailTitleInput" class="detail-input" readonly>
+                                    <div class="detail-preview" id="templateDetailTitlePreview">
+                                        <span class="preview-value"></span>
+                                    </div>
+                                </div>
+                                <div class="detail-field">
+                                    <label>学习形式</label>
+                                    <select id="templateDetailFormType" class="detail-select" disabled></select>
+                                    <div class="detail-preview" id="templateDetailFormTypePreview">
+                                        <span class="preview-value preview-badge"></span>
+                                    </div>
+                                </div>
+                                <div class="detail-field">
+                                    <label>总时长 (分钟)</label>
+                                    <input type="number" id="templateDetailDuration" class="detail-input" readonly>
+                                    <div class="detail-preview" id="templateDetailDurationPreview">
+                                        <span class="preview-value preview-duration"></span>
+                                    </div>
+                                </div>
+                                <div class="detail-field">
+                                    <label>正文笔记</label>
+                                    <textarea id="templateDetailBody" class="detail-textarea" readonly placeholder="可选，记录详细说明..."></textarea>
+                                    <div id="templateDetailBodyPreview" class="markdown-preview" style="display: none;"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="detail-section" id="templateExperienceSection">
+                            <h3>学习体验</h3>
+                            <div class="detail-fields">
+                                <div class="detail-field">
+                                    <label>难度评级</label>
+                                    <div class="rating-display" id="templateDetailDifficulty">
+                                        <span class="star">☆</span><span class="star">☆</span><span class="star">☆</span><span class="star">☆</span><span class="star">☆</span>
+                                    </div>
+                                </div>
+                                <div class="detail-field">
+                                    <label>专注度</label>
+                                    <div class="rating-display" id="templateDetailFocus">
+                                        <span class="star">☆</span><span class="star">☆</span><span class="star">☆</span><span class="star">☆</span><span class="star">☆</span>
+                                    </div>
+                                </div>
+                                <div class="detail-field">
+                                    <label>精力状态</label>
+                                    <div class="rating-display" id="templateDetailEnergy">
+                                        <span class="star">☆</span><span class="star">☆</span><span class="star">☆</span><span class="star">☆</span><span class="star">☆</span>
+                                    </div>
+                                </div>
+                                <div class="detail-field">
+                                    <label>心情记录</label>
+                                    <textarea id="templateDetailMood" class="detail-textarea" readonly></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="record-detail-middle">
+                        <div class="detail-section">
+                            <h3>标签管理</h3>
+                            <div class="tags-display" id="templateDetailTags"></div>
+                            <div class="tag-editor" id="templateTagEditor" style="display: none;">
+                                <div class="tag-input-container">
+                                    <input type="text" id="templateDetailTagInput" class="tag-input" placeholder="输入新标签...">
+                                    <button class="btn-small btn-primary" id="templateDetailAddTagBtn">添加标签</button>
+                                </div>
+                                <div class="tag-suggestions-detail" id="templateDetailTagSuggestions"></div>
+                            </div>
+                        </div>
+
+                        <div class="detail-section">
+                            <h3>模板隐私</h3>
+                            <div class="detail-field">
+                                <label>共享范围</label>
+                                <select id="templateDetailPrivacy" class="detail-select" disabled>
+                                    <option value="private">仅自己可见</option>
+                                    <option value="buddies">学习搭子可见</option>
+                                    <option value="public">公开</option>
+                                </select>
+                                <div class="detail-preview" id="templateDetailPrivacyPreview">
+                                    <span class="preview-value preview-badge"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="record-detail-right">
+                        <div class="detail-section" id="templateResourceSection">
+                            <h3>关联资源</h3>
+                            <div class="detail-fields">
+                                <div class="detail-field">
+                                    <label>资源标题</label>
+                                    <input type="text" id="templateResourceTitle" class="detail-input" readonly>
+                                    <div class="detail-preview" id="templateResourceTitlePreview">
+                                        <span class="preview-value"></span>
+                                    </div>
+                                </div>
+                                <div class="detail-field">
+                                    <label>资源类型</label>
+                                    <input type="text" id="templateResourceType" class="detail-input" readonly>
+                                    <div class="detail-preview" id="templateResourceTypePreview">
+                                        <span class="preview-value"></span>
+                                    </div>
+                                </div>
+                                <div class="detail-field">
+                                    <label>作者/讲师</label>
+                                    <input type="text" id="templateResourceAuthor" class="detail-input" readonly>
+                                    <div class="detail-preview" id="templateResourceAuthorPreview">
+                                        <span class="preview-value"></span>
+                                    </div>
+                                </div>
+                                <div class="detail-field">
+                                    <label>资源链接</label>
+                                    <input type="url" id="templateResourceUrl" class="detail-input" readonly>
+                                    <div class="detail-preview" id="templateResourceUrlPreview">
+                                        <a href="#" target="_blank" class="preview-link"></a>
+                                    </div>
+                                </div>
+                                <div class="detail-field">
+                                    <label>平台</label>
+                                    <input type="text" id="templateResourcePlatform" class="detail-input" readonly>
+                                    <div class="detail-preview" id="templateResourcePlatformPreview">
+                                        <span class="preview-value"></span>
+                                    </div>
+                                </div>
+                                <div class="detail-field">
+                                    <label>ISBN</label>
+                                    <input type="text" id="templateResourceIsbn" class="detail-input" readonly>
+                                    <div class="detail-preview" id="templateResourceIsbnPreview">
+                                        <span class="preview-value"></span>
+                                    </div>
+                                </div>
+                                <div class="detail-field">
+                                    <label>资源描述</label>
+                                    <textarea id="templateResourceDescription" class="detail-textarea" readonly></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Template Delete Modal -->
+    <div id="templateDeleteModal" class="modal hidden">
+        <div class="modal-content confirm-dialog">
+            <div class="modal-header">
+                <h3 class="modal-title">删除模板</h3>
+                <button class="modal-close" onclick="closeTemplateDeleteModal()">×</button>
+            </div>
+
+            <div class="confirm-message" id="templateDeleteMessage"></div>
+
+            <div class="confirm-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeTemplateDeleteModal()">取消</button>
+                <button type="button" class="btn btn-danger" onclick="executeTemplateDelete()">确认删除</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include Markdown Library -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@9.1.2/marked.min.js" integrity="sha384-..." crossorigin="anonymous"></script>
     <!-- Include Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- Include Environment Variables -->
@@ -700,6 +1008,9 @@
             // Initialize settings page
             if (window.settingsManager) {
                 await window.settingsManager.init();
+            }
+            if (window.templateManager) {
+                await window.templateManager.init();
             }
         });
 

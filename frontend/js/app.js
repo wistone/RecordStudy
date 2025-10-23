@@ -10,6 +10,8 @@ class LearningBuddyApp {
         this.isSubmitting = false; // 防止重复提交
         this.isCreatingNew = false; // 标记是否正在创建新记录
         this.formTypes = []; // 用户的学习形式类型
+        this.recordTemplates = []; // 快速记录的模板列表
+        this.isTemplateSubmitting = false;
         this.init();
     }
 
@@ -21,6 +23,7 @@ class LearningBuddyApp {
         
         await this.loadData();
         await this.loadFormTypes();
+        await this.loadTemplateRecords(true);
         this.setupEventListeners();
         this.updateDashboard();
         this.renderRecentRecords();
@@ -71,7 +74,8 @@ class LearningBuddyApp {
             // 缓存数据
             this.setToCache(cacheKey, initData, cacheExpiry);
             this.processInitData(initData);
-            
+            await this.refreshRecentRecordsFromApi();
+
         } catch (error) {
             console.error('❌ 加载数据失败:', error);
             this.showError('加载数据失败，请检查网络连接和后端服务');
@@ -240,7 +244,8 @@ class LearningBuddyApp {
         const formType = this.formTypes.find(ft => ft.type_code === typeCode);
         return {
             emoji: formType?.emoji || '📌',
-            name: formType?.type_name || typeCode || '其他'
+            name: formType?.type_name || typeCode || '其他',
+            type_name: formType?.type_name || typeCode || '其他'
         };
     }
     
@@ -453,7 +458,7 @@ class LearningBuddyApp {
 
     async showQuickRecord() {
         console.log('🚀 打开快速记录页面');
-        
+
         // 1. 重置所有状态（关键！）
         this.recordData = {};
         this.currentStep = 1;
@@ -478,7 +483,13 @@ class LearningBuddyApp {
         
         // 6. 确保标签建议正确显示选中状态
         this.bindTagSuggestionEvents();
-        
+
+        // 7. 加载模板记录列表
+        await this.loadTemplateRecords(true);
+        console.log('📋 模板列表加载完成，数量:', this.recordTemplates.length);
+        this.renderTemplateRecordList();
+        this.switchRecordTab('form');
+
         console.log('✅ 快速记录页面初始化完成');
     }
 
@@ -867,16 +878,231 @@ class LearningBuddyApp {
         this.updateTagSuggestionsState();
     }
 
+    async loadTemplateRecords(force = false) {
+        if (!force && this.recordTemplates && this.recordTemplates.length > 0) {
+            return;
+        }
+
+        try {
+            console.log('📦 加载模板记录列表用于快速记录');
+            const response = await window.apiService.getRecordTemplates({ limit: 100 });
+            const templates = response?.templates || [];
+            this.recordTemplates = templates.map(template => {
+                const normalized = { ...template };
+                if (typeof normalized.tags === 'string' && normalized.tags.trim()) {
+                    normalized.tags = normalized.tags.split(',').map(tag => tag.trim()).filter(Boolean);
+                }
+                return normalized;
+            });
+            console.log('✅ 模板记录加载完成:', this.recordTemplates.length);
+        } catch (error) {
+            console.error('❌ 加载模板记录失败:', error);
+            this.recordTemplates = [];
+        }
+    }
+
+    renderTemplateRecordList() {
+        const listEl = document.getElementById('templateRecordList');
+        const emptyEl = document.getElementById('templateRecordEmpty');
+        if (!listEl || !emptyEl) return;
+
+        if (!this.recordTemplates || this.recordTemplates.length === 0) {
+            emptyEl.style.display = 'block';
+            listEl.innerHTML = '';
+            if (this.templateRecordClickHandler) {
+                listEl.removeEventListener('click', this.templateRecordClickHandler);
+                this.templateRecordClickHandler = null;
+            }
+            return;
+        }
+
+        emptyEl.style.display = 'none';
+        console.log('📝 渲染模板记录列表，数量:', this.recordTemplates.length);
+        const todayValues = this.formatDateForInput();
+
+        listEl.innerHTML = this.recordTemplates.map(template => {
+            const typeInfo = this.getFormTypeInfo(template.form_type);
+            const tags = Array.isArray(template.tags) ? template.tags.filter(Boolean) : [];
+            const tagHtml = tags.length
+                ? `<span class="record-tags">${tags.map(tag => this.escapeHtml(tag)).join(' · ')}</span>`
+                : '<span class="record-tags record-tags-empty">未设置标签</span>';
+            const durationLabel = template.duration_min ? this.formatDurationDisplay(template.duration_min) : '未设时长';
+            const durationValue = template.duration_min != null ? template.duration_min : '';
+            const templateId = template.template_id;
+
+            return `
+                <div class="template-record-item">
+                    <div class="template-record-header">
+                        <div class="template-record-main">
+                            <div class="template-record-icon">${this.escapeHtml(typeInfo.emoji || '📘')}</div>
+                            <div class="template-record-content">
+                                <div class="record-title">${this.escapeHtml(template.title || '未命名模板')}</div>
+                                <div class="template-record-meta">
+                                    ${tagHtml}
+                                    <span>${this.escapeHtml(typeInfo.name || template.form_type || '未分类')}</span>
+                                    <span class="record-duration">${durationLabel}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary template-use-btn template-record-confirm" data-template-id="${templateId}">确认</button>
+                    </div>
+                    <div class="template-record-fields">
+                        <div class="template-record-field">
+                            <label>学习时长（分钟）</label>
+                            <input type="number" min="0" id="template-duration-${templateId}" value="${durationValue}">
+                        </div>
+                        <div class="template-record-field">
+                            <label>学习时间</label>
+                            <input type="datetime-local" id="template-date-${templateId}" value="${todayValues.dateTime}">
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        if (this.templateRecordClickHandler) {
+            listEl.removeEventListener('click', this.templateRecordClickHandler);
+        }
+
+        this.templateRecordClickHandler = (event) => {
+            const button = event.target.closest('.template-use-btn');
+            if (!button) return;
+            const templateId = parseInt(button.dataset.templateId, 10);
+            if (!templateId) return;
+            this.createRecordFromTemplate(templateId, button);
+        };
+
+        listEl.addEventListener('click', this.templateRecordClickHandler);
+    }
+
+    formatDateForInput(date = new Date()) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        return {
+            date: `${year}-${month}-${day}`,
+            dateTime: `${year}-${month}-${day}T${hours}:${minutes}`
+        };
+    }
+
+    getDateFromInput(value) {
+        if (!value) {
+            return new Date();
+        }
+        const date = new Date(value);
+        return isNaN(date.getTime()) ? new Date() : date;
+    }
+
+    async createRecordFromTemplate(templateId, triggerButton) {
+        if (this.isTemplateSubmitting) return;
+
+        const template = this.recordTemplates?.find(item => item.template_id === templateId);
+        if (!template) {
+            this.showError('未找到对应的模板');
+            return;
+        }
+
+        const durationInput = document.getElementById(`template-duration-${templateId}`);
+        const dateInput = document.getElementById(`template-date-${templateId}`);
+
+        const inputDuration = durationInput ? parseInt(durationInput.value, 10) : NaN;
+        const duration = Number.isFinite(inputDuration) ? inputDuration : (template.duration_min || 0);
+        const occurredAt = this.getDateFromInput(dateInput ? dateInput.value : null).toISOString();
+
+        const templateTags = Array.isArray(template.tags) ? template.tags.filter(Boolean) : [];
+
+        console.log('📝 使用模板创建记录', {
+            templateId,
+            duration,
+            dateInputValue: dateInput?.value,
+            occurredAt
+        });
+
+        const payload = {
+            title: template.title,
+            form_type: template.form_type,
+            duration_min: duration,
+            occurred_at: occurredAt,
+            tags: templateTags,
+            body_md: template.body_md || '',
+            privacy: template.privacy || 'private'
+        };
+
+        if (template.effective_duration_min != null) {
+            payload.effective_duration_min = Math.min(duration, template.effective_duration_min);
+        }
+        if (template.difficulty != null) payload.difficulty = template.difficulty;
+        if (template.focus != null) payload.focus = template.focus;
+        if (template.energy != null) payload.energy = template.energy;
+        if (template.mood) payload.mood = template.mood;
+        if (template.assets) payload.assets = template.assets;
+        if (template.auto_confidence != null) payload.auto_confidence = template.auto_confidence;
+        if (template.resource_id) payload.resource_id = template.resource_id;
+
+        this.isTemplateSubmitting = true;
+        if (triggerButton) {
+            triggerButton.disabled = true;
+            triggerButton.textContent = '创建中...';
+        }
+
+        try {
+            await window.apiService.createRecord(payload);
+            await this.clearCacheAfterRecordCreation();
+            await this.loadData();
+            await this.refreshRecentRecordsFromApi();
+            this.updateDashboard();
+            this.renderRecentRecords();
+            this.updateConditionalSections();
+            if (this.currentPage === 'records') {
+                await this.loadAllRecords();
+                this.renderAllRecords();
+            }
+            this.closeQuickRecord();
+            this.showSuccessMessage('模板记录创建成功！');
+        } catch (error) {
+            console.error('❌ 通过模板创建记录失败:', error);
+            this.showError('创建模板记录失败: ' + window.apiService.formatError(error));
+        } finally {
+            this.isTemplateSubmitting = false;
+            if (triggerButton) {
+                triggerButton.disabled = false;
+                triggerButton.textContent = '确认';
+            }
+        }
+    }
+
     switchRecordTab(tab) {
-        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-        
+        console.log('🪟 切换快速记录Tab:', tab);
+        const modal = document.getElementById('quickRecordModal');
+        if (!modal) {
+            console.warn('⚠️ 未找到快速记录模态框');
+            return;
+        }
+
+        const formBtn = document.getElementById('quickFormTabBtn');
+        const templateBtn = document.getElementById('quickTemplateTabBtn');
+        const formContent = document.getElementById('formRecord');
+        const templateContent = document.getElementById('templateRecord');
+
+        if (formBtn) formBtn.classList.remove('active');
+        if (templateBtn) templateBtn.classList.remove('active');
+        if (formContent) formContent.classList.remove('active');
+        if (templateContent) templateContent.classList.remove('active');
+
         if (tab === 'form') {
-            document.querySelector('.tab-btn[onclick*="form"]').classList.add('active');
-            document.getElementById('formRecord').classList.add('active');
-        } else {
-            document.querySelector('.tab-btn[onclick*="quick"]').classList.add('active');
-            document.getElementById('quickNote').classList.add('active');
+            if (formBtn) formBtn.classList.add('active');
+            if (formContent) formContent.classList.add('active');
+        } else if (tab === 'template') {
+            if (templateBtn) templateBtn.classList.add('active');
+            if (templateContent) templateContent.classList.add('active');
+            if (!this.recordTemplates || this.recordTemplates.length === 0) {
+                console.log('📭 模板列表为空，重新加载');
+                this.loadTemplateRecords(true).then(() => this.renderTemplateRecordList());
+            } else {
+                this.renderTemplateRecordList();
+            }
         }
     }
 
@@ -1015,8 +1241,9 @@ class LearningBuddyApp {
     
     // HTML转义函数
     escapeHtml(text) {
+        if (text === null || text === undefined) return '';
         const div = document.createElement('div');
-        div.textContent = text;
+        div.textContent = String(text);
         return div.innerHTML;
     }
 
@@ -1080,6 +1307,7 @@ class LearningBuddyApp {
                 title: title,
                 form_type: this.recordData.type,
                 duration_min: duration,
+                occurred_at: new Date().toISOString(),
                 tags: this.recordData.tags || [],
                 body_md: notes
             };
@@ -1093,16 +1321,18 @@ class LearningBuddyApp {
             
             // 重新加载最新数据而不是依赖本地转换
             await this.loadData();
-            
+            await this.refreshRecentRecordsFromApi();
+
             // Update UI based on current page
             this.updateDashboard();
             this.renderRecentRecords();
             this.updateConditionalSections();
-            
-            // Refresh current page if it's records page
-            if (this.currentPage === 'records') {
-                this.renderAllRecords();
-            }
+        
+        // Refresh current page if it's records page
+        if (this.currentPage === 'records') {
+            await this.loadAllRecords();
+            this.renderAllRecords();
+        }
             
             // Close modal and reset
             this.closeQuickRecord();
@@ -1134,19 +1364,21 @@ class LearningBuddyApp {
                 notes: quickText
             };
             
-            const savedRecord = await window.apiService.createRecord(recordPayload);
-            const convertedRecord = this.convertBackendRecord(savedRecord);
-            this.records.unshift(convertedRecord);
-            
+            await window.apiService.createRecord(recordPayload);
+            await this.clearCacheAfterRecordCreation();
+            await this.loadData();
+            await this.refreshRecentRecordsFromApi();
+
             this.updateDashboard();
             this.renderRecentRecords();
             this.updateConditionalSections();
-            
+
             // Refresh current page if it's records page
             if (this.currentPage === 'records') {
+                await this.loadAllRecords();
                 this.renderAllRecords();
             }
-            
+
             this.closeQuickRecord();
             this.showSuccessMessage('快速记录保存成功！');
             
@@ -1584,6 +1816,29 @@ class LearningBuddyApp {
                 </div>
             `;
         }).join('');
+    }
+
+    async refreshRecentRecordsFromApi(limit = 20) {
+        try {
+            const response = await window.apiService.getRecords({ skip: 0, limit });
+            const fetched = response?.records ? response.records.map(record => this.convertBackendRecord(record)) : [];
+
+            if (fetched.length) {
+                const existing = this.records || [];
+                const merged = [...fetched];
+                existing.forEach(record => {
+                    const recordId = record.record_id || record.id;
+                    if (!merged.some(item => (item.record_id || item.id) === recordId)) {
+                        merged.push(record);
+                    }
+                });
+                this.records = merged;
+            }
+
+            this.renderRecentRecords();
+        } catch (error) {
+            console.error('❌ 刷新最近记录失败:', error);
+        }
     }
 
     renderAllRecords() {

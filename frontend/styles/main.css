@@ -517,6 +517,7 @@ body {
 
 .record-meta {
     display: flex;
+    align-items: center;
     gap: 16px;
     font-size: 13px;
     color: var(--text-secondary);
@@ -534,6 +535,11 @@ body {
     border-radius: 12px;
     font-size: 12px;
     font-weight: 500;
+}
+
+.record-tags.record-tags-empty {
+    background: var(--bg-tertiary);
+    color: var(--text-tertiary);
 }
 
 .record-actions {
@@ -1469,6 +1475,10 @@ body {
     box-shadow: var(--shadow-lg);
 }
 
+.modal-content.template-modal {
+    max-width: 760px;
+}
+
 .modal-header {
     display: flex;
     justify-content: space-between;
@@ -1564,6 +1574,164 @@ body {
     display: block;
 }
 
+.template-record-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.template-record-empty {
+    text-align: center;
+    color: var(--text-secondary);
+    padding: 24px 16px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+}
+
+.template-record-empty a {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.template-record-empty a:hover {
+    text-decoration: underline;
+}
+
+.template-record-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.template-record-item {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 18px 22px;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    background: white;
+    box-shadow: var(--shadow-sm);
+}
+
+.template-record-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 24px;
+}
+
+.template-record-main {
+    display: flex;
+    gap: 16px;
+    flex: 1;
+    align-items: center;
+}
+
+.template-record-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    background: var(--bg-tertiary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+}
+
+.template-record-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+
+.template-record-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+}
+
+.template-record-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    border-top: 1px dashed #edf2f7;
+    padding-top: 12px;
+}
+
+.template-record-field {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.template-record-field label {
+    font-size: 13px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    min-width: 90px;
+}
+
+.template-record-field input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    flex: 1;
+}
+
+.template-record-confirm {
+    align-self: flex-end;
+    white-space: nowrap;
+    padding: 8px 20px;
+}
+
+.template-record-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    flex-wrap: wrap;
+    margin-top: 4px;
+}
+
+.template-record-meta .record-tags {
+    margin-right: 0;
+}
+
+.template-record-meta .record-duration {
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+@media (max-width: 768px) {
+    .template-record-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .template-record-fields {
+        grid-template-columns: 1fr;
+    }
+
+    .template-record-field {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 6px;
+    }
+
+    .template-record-confirm {
+        width: 100%;
+    }
+}
+
 /* Form Steps */
 .form-step {
     display: none;
@@ -1572,6 +1740,7 @@ body {
 .form-step.active {
     display: block;
     animation: slideIn 0.3s ease;
+    margin-bottom: 24px;
 }
 
 @keyframes slideIn {
