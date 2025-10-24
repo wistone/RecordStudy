@@ -12,6 +12,10 @@ class LearningBuddyApp {
         this.formTypes = []; // 用户的学习形式类型
         this.recordTemplates = []; // 快速记录的模板列表
         this.isTemplateSubmitting = false;
+        this.selectedTemplateIds = new Set();
+        this.templateInputState = {};
+        this.templateRecordClickHandler = null;
+        this.templateRecordInputHandler = null;
         this.init();
     }
 
@@ -462,17 +466,17 @@ class LearningBuddyApp {
         // 1. 重置所有状态（关键！）
         this.recordData = {};
         this.currentStep = 1;
-        
+
         // 2. 显示模态框
         document.getElementById('quickRecordModal').classList.add('active');
         this.showStep(1);
-        
+
         // 3. 渲染动态学习形式类型
         this.renderQuickRecordFormTypes();
-        
+
         // 4. 初始化已选标签显示（先绑定事件）
         this.renderTags();
-        
+
         // 5. 渲染智能标签建议（异步操作）
         try {
             await this.renderSmartTagSuggestions();
@@ -480,11 +484,15 @@ class LearningBuddyApp {
         } catch (error) {
             console.error('❌ 标签建议渲染失败:', error);
         }
-        
+
         // 6. 确保标签建议正确显示选中状态
         this.bindTagSuggestionEvents();
 
-        // 7. 加载模板记录列表
+        // 7. 重置模板选择状态并加载模板记录列表
+        this.selectedTemplateIds.clear();
+        this.templateInputState = {};
+        const footerEl = document.getElementById('templateRecordFooter');
+        if (footerEl) footerEl.innerHTML = '';
         await this.loadTemplateRecords(true);
         console.log('📋 模板列表加载完成，数量:', this.recordTemplates.length);
         this.renderTemplateRecordList();
@@ -871,6 +879,10 @@ class LearningBuddyApp {
     closeQuickRecord() {
         document.getElementById('quickRecordModal').classList.remove('active');
         this.resetForm();
+        this.selectedTemplateIds.clear();
+        this.templateInputState = {};
+        const footerEl = document.getElementById('templateRecordFooter');
+        if (footerEl) footerEl.innerHTML = '';
     }
     
     bindTagSuggestionEvents() {
@@ -894,6 +906,18 @@ class LearningBuddyApp {
                 }
                 return normalized;
             });
+
+            const availableIds = new Set(this.recordTemplates.map(item => item.template_id));
+            this.selectedTemplateIds = new Set([...this.selectedTemplateIds].filter(id => availableIds.has(id)));
+
+            const nextState = {};
+            Object.keys(this.templateInputState || {}).forEach(key => {
+                const numericKey = Number(key);
+                if (availableIds.has(numericKey)) {
+                    nextState[key] = this.templateInputState[key];
+                }
+            });
+            this.templateInputState = nextState;
             console.log('✅ 模板记录加载完成:', this.recordTemplates.length);
         } catch (error) {
             console.error('❌ 加载模板记录失败:', error);
@@ -904,34 +928,46 @@ class LearningBuddyApp {
     renderTemplateRecordList() {
         const listEl = document.getElementById('templateRecordList');
         const emptyEl = document.getElementById('templateRecordEmpty');
-        if (!listEl || !emptyEl) return;
+        const footerEl = document.getElementById('templateRecordFooter');
+        if (!listEl || !emptyEl || !footerEl) return;
 
         if (!this.recordTemplates || this.recordTemplates.length === 0) {
             emptyEl.style.display = 'block';
             listEl.innerHTML = '';
+            footerEl.innerHTML = '';
             if (this.templateRecordClickHandler) {
                 listEl.removeEventListener('click', this.templateRecordClickHandler);
                 this.templateRecordClickHandler = null;
+            }
+            if (this.templateRecordInputHandler) {
+                listEl.removeEventListener('input', this.templateRecordInputHandler);
+                this.templateRecordInputHandler = null;
             }
             return;
         }
 
         emptyEl.style.display = 'none';
         console.log('📝 渲染模板记录列表，数量:', this.recordTemplates.length);
-        const todayValues = this.formatDateForInput();
+
+        const today = this.formatDateForInput();
 
         listEl.innerHTML = this.recordTemplates.map(template => {
+            const templateId = template.template_id;
+            const key = String(templateId);
             const typeInfo = this.getFormTypeInfo(template.form_type);
             const tags = Array.isArray(template.tags) ? template.tags.filter(Boolean) : [];
             const tagHtml = tags.length
                 ? `<span class="record-tags">${tags.map(tag => this.escapeHtml(tag)).join(' · ')}</span>`
                 : '<span class="record-tags record-tags-empty">未设置标签</span>';
             const durationLabel = template.duration_min ? this.formatDurationDisplay(template.duration_min) : '未设时长';
-            const durationValue = template.duration_min != null ? template.duration_min : '';
-            const templateId = template.template_id;
+            const storedState = this.templateInputState[key] || {};
+            const durationValue = storedState.duration !== undefined ? storedState.duration : (template.duration_min != null ? String(template.duration_min) : '');
+            const dateTimeValue = storedState.dateTime || today.dateTime;
+            this.templateInputState[key] = { duration: durationValue, dateTime: dateTimeValue };
+            const isSelected = this.selectedTemplateIds.has(templateId);
 
             return `
-                <div class="template-record-item">
+                <div class="template-record-item ${isSelected ? 'selected' : ''}" data-template-id="${templateId}">
                     <div class="template-record-header">
                         <div class="template-record-main">
                             <div class="template-record-icon">${this.escapeHtml(typeInfo.emoji || '📘')}</div>
@@ -944,16 +980,18 @@ class LearningBuddyApp {
                                 </div>
                             </div>
                         </div>
-                        <button class="btn btn-primary template-use-btn template-record-confirm" data-template-id="${templateId}">确认</button>
+                        <button type="button" class="template-select-btn ${isSelected ? 'selected' : ''}" data-template-id="${templateId}">
+                            ${isSelected ? '已选择' : '选择'}
+                        </button>
                     </div>
                     <div class="template-record-fields">
                         <div class="template-record-field">
                             <label>学习时长（分钟）</label>
-                            <input type="number" min="0" id="template-duration-${templateId}" value="${durationValue}">
+                            <input type="number" min="0" class="template-record-input template-duration-input" data-template-id="${templateId}" value="${durationValue}">
                         </div>
                         <div class="template-record-field">
                             <label>学习时间</label>
-                            <input type="datetime-local" id="template-date-${templateId}" value="${todayValues.dateTime}">
+                            <input type="datetime-local" class="template-record-input template-datetime-input" data-template-id="${templateId}" value="${dateTimeValue}">
                         </div>
                     </div>
                 </div>
@@ -963,16 +1001,203 @@ class LearningBuddyApp {
         if (this.templateRecordClickHandler) {
             listEl.removeEventListener('click', this.templateRecordClickHandler);
         }
-
         this.templateRecordClickHandler = (event) => {
-            const button = event.target.closest('.template-use-btn');
-            if (!button) return;
-            const templateId = parseInt(button.dataset.templateId, 10);
-            if (!templateId) return;
-            this.createRecordFromTemplate(templateId, button);
+            const selectBtn = event.target.closest('.template-select-btn');
+            if (selectBtn) {
+                const templateId = parseInt(selectBtn.dataset.templateId, 10);
+                if (templateId) {
+                    this.toggleTemplateSelection(templateId);
+                }
+                return;
+            }
         };
-
         listEl.addEventListener('click', this.templateRecordClickHandler);
+
+        if (this.templateRecordInputHandler) {
+            listEl.removeEventListener('input', this.templateRecordInputHandler);
+            listEl.removeEventListener('change', this.templateRecordInputHandler);
+        }
+        this.templateRecordInputHandler = (event) => {
+            const input = event.target;
+            if (!input.classList.contains('template-record-input')) {
+                return;
+            }
+            const templateId = parseInt(input.dataset.templateId || input.closest('.template-record-item')?.dataset.templateId, 10);
+            if (!templateId) return;
+            const key = String(templateId);
+            const state = this.templateInputState[key] || {};
+            if (input.classList.contains('template-duration-input')) {
+                state.duration = input.value;
+            } else if (input.classList.contains('template-datetime-input')) {
+                state.dateTime = input.value;
+            }
+            this.templateInputState[key] = state;
+        };
+        listEl.addEventListener('input', this.templateRecordInputHandler);
+        listEl.addEventListener('change', this.templateRecordInputHandler);
+
+        this.updateTemplateFooter();
+    }
+
+    toggleTemplateSelection(templateId) {
+        if (this.isTemplateSubmitting) return;
+        const id = Number(templateId);
+        if (!id) return;
+
+        if (this.selectedTemplateIds.has(id)) {
+            this.selectedTemplateIds.delete(id);
+        } else {
+            this.selectedTemplateIds.add(id);
+        }
+
+        this.applyTemplateSelectionStyles(id);
+        this.updateTemplateFooter();
+    }
+
+    applyTemplateSelectionStyles(templateId) {
+        const id = Number(templateId);
+        const itemEl = document.querySelector(`.template-record-item[data-template-id="${id}"]`);
+        if (!itemEl) return;
+
+        const isSelected = this.selectedTemplateIds.has(id);
+        itemEl.classList.toggle('selected', isSelected);
+
+        const selectBtn = itemEl.querySelector('.template-select-btn');
+        if (selectBtn) {
+            selectBtn.classList.toggle('selected', isSelected);
+            selectBtn.textContent = isSelected ? '已选择' : '选择';
+        }
+    }
+
+    clearTemplateSelection() {
+        if (!this.selectedTemplateIds.size) return;
+        const ids = Array.from(this.selectedTemplateIds);
+        this.selectedTemplateIds.clear();
+        ids.forEach(id => this.applyTemplateSelectionStyles(id));
+        this.updateTemplateFooter();
+    }
+
+    updateTemplateFooter() {
+        const footerEl = document.getElementById('templateRecordFooter');
+        if (!footerEl) return;
+
+        const total = this.recordTemplates?.length || 0;
+        if (!total) {
+            footerEl.innerHTML = '';
+            return;
+        }
+
+        const selectedCount = this.selectedTemplateIds.size;
+        const isProcessing = this.isTemplateSubmitting;
+
+        footerEl.innerHTML = `
+            <div class="template-record-footer-info">
+                已选择 <strong>${selectedCount}</strong> 个模板
+                ${selectedCount === 0 ? '<span class="template-record-footer-hint">（选择多个模板可一次创建多条记录）</span>' : ''}
+            </div>
+            <div class="template-record-footer-actions">
+                <button type="button" class="btn btn-secondary template-clear-selected-btn" ${selectedCount === 0 || isProcessing ? 'disabled' : ''}>清除选择</button>
+                <button type="button" class="btn btn-primary template-create-selected-btn" ${selectedCount === 0 || isProcessing ? 'disabled' : ''}>${isProcessing ? '创建中...' : '创建选中记录'}</button>
+            </div>
+        `;
+
+        const clearBtn = footerEl.querySelector('.template-clear-selected-btn');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => this.clearTemplateSelection());
+        }
+
+        const createBtn = footerEl.querySelector('.template-create-selected-btn');
+        if (createBtn) {
+            createBtn.addEventListener('click', () => this.createSelectedTemplates(createBtn));
+        }
+    }
+
+    async createSelectedTemplates(triggerButton = null) {
+        if (this.isTemplateSubmitting || !this.selectedTemplateIds.size) {
+            return;
+        }
+
+        const createBtn = triggerButton || document.querySelector('#templateRecordFooter .template-create-selected-btn');
+        this.isTemplateSubmitting = true;
+        if (createBtn) {
+            createBtn.disabled = true;
+            createBtn.textContent = '创建中...';
+        }
+
+        const ids = Array.from(this.selectedTemplateIds);
+
+        try {
+            const payloads = [];
+            for (const id of ids) {
+                const template = this.recordTemplates.find(item => item.template_id === id);
+                if (!template) continue;
+
+                const key = String(id);
+                const durationInput = document.getElementById(`template-duration-${id}`);
+                const dateInput = document.getElementById(`template-date-${id}`);
+
+                const storedState = this.templateInputState[key] || {};
+                const durationRaw = storedState.duration !== undefined ? storedState.duration : (durationInput ? durationInput.value : '');
+                const dateTimeRaw = storedState.dateTime || (dateInput ? dateInput.value : '');
+
+                const parsedDuration = durationRaw === '' ? template.duration_min || 0 : parseInt(durationRaw, 10);
+                const duration = Number.isFinite(parsedDuration) ? Math.max(parsedDuration, 0) : (template.duration_min || 0);
+                const occurredAt = this.getDateFromInput(dateTimeRaw).toISOString();
+                const templateTags = Array.isArray(template.tags) ? template.tags.filter(Boolean) : [];
+
+                const payload = {
+                    title: template.title,
+                    form_type: template.form_type,
+                    duration_min: duration,
+                    occurred_at: occurredAt,
+                    tags: templateTags,
+                    body_md: template.body_md || '',
+                    privacy: template.privacy || 'private'
+                };
+
+                if (template.effective_duration_min != null) payload.effective_duration_min = Math.min(duration, template.effective_duration_min);
+                if (template.difficulty != null) payload.difficulty = template.difficulty;
+                if (template.focus != null) payload.focus = template.focus;
+                if (template.energy != null) payload.energy = template.energy;
+                if (template.mood) payload.mood = template.mood;
+                if (template.assets) payload.assets = template.assets;
+                if (template.auto_confidence != null) payload.auto_confidence = template.auto_confidence;
+                if (template.resource_id) payload.resource_id = template.resource_id;
+
+                payloads.push(payload);
+            }
+
+            if (!payloads.length) {
+                this.showError('请选择至少一个有效模板');
+                return;
+            }
+
+            for (const payload of payloads) {
+                await window.apiService.createRecord(payload);
+            }
+
+            await this.clearCacheAfterRecordCreation();
+            await this.loadData();
+            await this.refreshRecentRecordsFromApi();
+
+            if (this.currentPage === 'records') {
+                await this.loadAllRecords();
+                this.renderAllRecords();
+            }
+
+            this.closeQuickRecord();
+            this.showSuccessMessage(`成功创建 ${payloads.length} 条模板记录！`);
+        } catch (error) {
+            console.error('❌ 批量创建模板记录失败:', error);
+            this.showError('创建模板记录失败: ' + window.apiService.formatError(error));
+        } finally {
+            this.isTemplateSubmitting = false;
+            if (createBtn) {
+                createBtn.disabled = this.selectedTemplateIds.size === 0;
+                createBtn.textContent = '创建选中记录';
+            }
+            this.updateTemplateFooter();
+        }
     }
 
     formatDateForInput(date = new Date()) {
@@ -991,7 +1216,20 @@ class LearningBuddyApp {
         if (!value) {
             return new Date();
         }
-        const date = new Date(value);
+        let normalized = value.trim();
+        if (!normalized) return new Date();
+
+        if (normalized.includes('/')) {
+            normalized = normalized.replace(/\//g, '-');
+        }
+
+        if (normalized.length === 10) {
+            normalized += 'T00:00';
+        } else if (normalized.length === 16 && normalized.indexOf('T') === -1) {
+            normalized = normalized.replace(' ', 'T');
+        }
+
+        const date = new Date(normalized);
         return isNaN(date.getTime()) ? new Date() : date;
     }
 
@@ -1004,12 +1242,17 @@ class LearningBuddyApp {
             return;
         }
 
+        const key = String(templateId);
         const durationInput = document.getElementById(`template-duration-${templateId}`);
         const dateInput = document.getElementById(`template-date-${templateId}`);
 
-        const inputDuration = durationInput ? parseInt(durationInput.value, 10) : NaN;
-        const duration = Number.isFinite(inputDuration) ? inputDuration : (template.duration_min || 0);
-        const occurredAt = this.getDateFromInput(dateInput ? dateInput.value : null).toISOString();
+        const storedState = this.templateInputState[key] || {};
+        const durationRaw = storedState.duration !== undefined ? storedState.duration : (durationInput ? durationInput.value : '');
+        const dateTimeRaw = storedState.dateTime || (dateInput ? dateInput.value : '');
+
+        const parsedDuration = durationRaw === '' ? template.duration_min || 0 : parseInt(durationRaw, 10);
+        const duration = Number.isFinite(parsedDuration) ? Math.max(parsedDuration, 0) : (template.duration_min || 0);
+        const occurredAt = this.getDateFromInput(dateTimeRaw).toISOString();
 
         const templateTags = Array.isArray(template.tags) ? template.tags.filter(Boolean) : [];
 
@@ -1030,9 +1273,7 @@ class LearningBuddyApp {
             privacy: template.privacy || 'private'
         };
 
-        if (template.effective_duration_min != null) {
-            payload.effective_duration_min = Math.min(duration, template.effective_duration_min);
-        }
+        if (template.effective_duration_min != null) payload.effective_duration_min = Math.min(duration, template.effective_duration_min);
         if (template.difficulty != null) payload.difficulty = template.difficulty;
         if (template.focus != null) payload.focus = template.focus;
         if (template.energy != null) payload.energy = template.energy;
@@ -1099,9 +1340,13 @@ class LearningBuddyApp {
             if (templateContent) templateContent.classList.add('active');
             if (!this.recordTemplates || this.recordTemplates.length === 0) {
                 console.log('📭 模板列表为空，重新加载');
-                this.loadTemplateRecords(true).then(() => this.renderTemplateRecordList());
+                this.loadTemplateRecords(true).then(() => {
+                    this.renderTemplateRecordList();
+                    this.updateTemplateFooter();
+                });
             } else {
                 this.renderTemplateRecordList();
+                this.updateTemplateFooter();
             }
         }
     }
@@ -1832,10 +2077,15 @@ class LearningBuddyApp {
                         merged.push(record);
                     }
                 });
-                this.records = merged;
+
+                this.records = merged
+                    .filter(record => record && record.date instanceof Date && !isNaN(record.date.getTime()))
+                    .sort((a, b) => b.date - a.date)
+                    .slice(0, Math.max(limit, 50));
             }
 
             this.renderRecentRecords();
+            this.updateConditionalSections();
         } catch (error) {
             console.error('❌ 刷新最近记录失败:', error);
         }
