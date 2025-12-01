@@ -16,6 +16,13 @@ class LearningBuddyApp {
         this.templateInputState = {};
         this.templateRecordClickHandler = null;
         this.templateRecordInputHandler = null;
+
+        // 无限滚动相关
+        this.displayedRecordsCount = 0; // 当前显示的记录数
+        this.recordsPerPage = 50; // 每次加载的记录数
+        this.isLoadingMore = false; // 是否正在加载更多
+        this.filteredRecords = []; // 过滤后的记录（用于搜索）
+
         this.init();
     }
 
@@ -203,33 +210,33 @@ class LearningBuddyApp {
     async loadAllRecords() {
         try {
             this.showLoading(true);
-            
-            
-            // 分批加载所有记录（由于API限制每次最多100条）
+
+
+            // 分批加载所有记录（API限制已提升至1000条）
             let allRecords = [];
             let skip = 0;
-            const batchSize = 100;
-            
+            const batchSize = 500;
+
             while (true) {
                 const recordsData = await window.apiService.getRecords({
                     skip: skip,
                     limit: batchSize
                 });
-                
+
                 if (!recordsData?.records || recordsData.records.length === 0) {
                     break; // 没有更多记录了
                 }
-                
+
                 allRecords = allRecords.concat(recordsData.records);
-                
+
                 // 如果返回的记录数少于批次大小，说明已经加载完所有记录
                 if (recordsData.records.length < batchSize) {
                     break;
                 }
-                
+
                 skip += batchSize;
             }
-            
+
             // 转换记录格式
             this.records = allRecords.map(record => this.convertBackendRecord(record));
             
@@ -406,6 +413,48 @@ class LearningBuddyApp {
                 e.target.value = '';
             }
         });
+
+        // 无限滚动监听器
+        this.setupInfiniteScroll();
+    }
+
+    setupInfiniteScroll() {
+        // 监听 window 的滚动事件（因为滚动条在 body 上）
+        let scrollTimeout;
+        window.addEventListener('scroll', () => {
+            if (scrollTimeout) return;
+
+            scrollTimeout = setTimeout(() => {
+                scrollTimeout = null;
+
+                // 仅在学习记录页面激活时处理
+                if (this.currentPage !== 'records') return;
+
+                // 检查是否滚动到底部附近（距离底部300px）
+                const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                const scrollHeight = document.documentElement.scrollHeight;
+                const clientHeight = window.innerHeight;
+
+                if (scrollHeight - scrollTop - clientHeight < 300) {
+                    this.loadMoreRecords();
+                }
+            }, 100); // 100ms 节流
+        });
+    }
+
+    loadMoreRecords() {
+        // 防止重复加载
+        if (this.isLoadingMore) return;
+
+        // 检查是否还有更多记录
+        if (this.displayedRecordsCount >= this.filteredRecords.length) return;
+
+        this.isLoadingMore = true;
+
+        // 渲染下一批记录（不重置）
+        this.renderAllRecords(false);
+
+        this.isLoadingMore = false;
     }
 
     navigateTo(page) {
@@ -2091,9 +2140,9 @@ class LearningBuddyApp {
         }
     }
 
-    renderAllRecords() {
+    renderAllRecords(reset = true) {
         const container = document.getElementById('recordsList');
-        
+
         if (this.records.length === 0) {
             container.className = 'records-list empty';
             container.innerHTML = `
@@ -2111,10 +2160,29 @@ class LearningBuddyApp {
         } else {
             container.className = 'records-list full';
         }
-        
-        container.innerHTML = this.records.map((record, index) => {
+
+        // 重置时清空容器并重置计数
+        if (reset) {
+            container.innerHTML = '';
+            this.displayedRecordsCount = 0;
+            this.filteredRecords = this.records; // 默认显示所有记录
+        }
+
+        // 获取要渲染的记录
+        const recordsToRender = this.filteredRecords.slice(
+            this.displayedRecordsCount,
+            this.displayedRecordsCount + this.recordsPerPage
+        );
+
+        // 如果没有更多记录，显示提示
+        if (recordsToRender.length === 0 && this.displayedRecordsCount > 0) {
+            return;
+        }
+
+        // 渲染记录
+        const recordsHTML = recordsToRender.map((record, index) => {
             const recordId = record.record_id || record.id;
-            
+
             return `
                 <div class="record-item" onclick="app.viewRecordDetail(${recordId})">
                     <div class="record-type">${record.icon}</div>
@@ -2122,7 +2190,7 @@ class LearningBuddyApp {
                         <div class="record-title">${record.title}</div>
                         <div class="record-meta">
                             ${record.categories && record.categories.length > 0 && record.categories.filter(Boolean).length > 0
-                                ? `<span class="record-tags">${record.categories.filter(Boolean).join(', ')}</span>` 
+                                ? `<span class="record-tags">${record.categories.filter(Boolean).join(', ')}</span>`
                                 : ''}
                             <span>${record.dateString || record.date.toLocaleDateString('zh-CN')}</span>
                             <span>${record.time || record.date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</span>
@@ -2140,53 +2208,65 @@ class LearningBuddyApp {
                 </div>
             `;
         }).join('');
+
+        // 追加到容器
+        container.insertAdjacentHTML('beforeend', recordsHTML);
+
+        // 更新已显示记录数
+        this.displayedRecordsCount += recordsToRender.length;
+
+        // 如果还有更多记录，显示加载提示
+        if (this.displayedRecordsCount < this.filteredRecords.length) {
+            // 移除旧的加载提示（如果存在）
+            const oldLoadMore = container.querySelector('.load-more-indicator');
+            if (oldLoadMore) oldLoadMore.remove();
+
+            // 添加新的加载提示
+            container.insertAdjacentHTML('beforeend', `
+                <div class="load-more-indicator">
+                    <span>向下滚动加载更多记录...</span>
+                    <span class="load-more-count">(已显示 ${this.displayedRecordsCount} / ${this.filteredRecords.length})</span>
+                </div>
+            `);
+        } else {
+            // 移除加载提示
+            const loadMore = container.querySelector('.load-more-indicator');
+            if (loadMore) loadMore.remove();
+
+            // 显示已加载全部的提示
+            if (this.filteredRecords.length > this.recordsPerPage) {
+                container.insertAdjacentHTML('beforeend', `
+                    <div class="all-loaded-indicator">
+                        已加载全部 ${this.filteredRecords.length} 条记录
+                    </div>
+                `);
+            }
+        }
     }
 
     filterRecords() {
         const typeFilter = document.getElementById('typeFilter')?.value;
         const searchFilter = document.getElementById('searchInput')?.value.toLowerCase();
-        
+
+        // 在全量记录中进行过滤
         let filtered = this.records;
-        
+
         if (typeFilter) {
             filtered = filtered.filter(r => r.type === typeFilter);
         }
-        
+
         if (searchFilter) {
-            filtered = filtered.filter(r => 
+            filtered = filtered.filter(r =>
                 r.title.toLowerCase().includes(searchFilter) ||
                 (r.categories && r.categories.some(c => c.toLowerCase().includes(searchFilter)))
             );
         }
-        
-        const container = document.getElementById('recordsList');
-        container.innerHTML = filtered.map(record => {
-            const recordId = record.record_id || record.id;
-            return `
-                <div class="record-item" onclick="app.viewRecordDetail(${recordId})">
-                    <div class="record-type">${record.icon}</div>
-                    <div class="record-content">
-                        <div class="record-title">${record.title}</div>
-                        <div class="record-meta">
-                            ${record.categories && record.categories.length > 0 && record.categories.filter(Boolean).length > 0
-                                ? `<span class="record-tags">${record.categories.filter(Boolean).join(', ')}</span>` 
-                                : ''}
-                            <span>${record.dateString || record.date.toLocaleDateString('zh-CN')}</span>
-                            <span>${record.time || record.date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</span>
-                            <span class="record-duration">${record.duration || 0}分钟</span>
-                        </div>
-                    </div>
-                    <div class="record-actions" onclick="event.stopPropagation()">
-                        <button class="btn-action btn-detail" onclick="app.viewRecordDetail(${recordId})" title="查看记录详情">
-                            📄 详情
-                        </button>
-                        <button class="btn-action btn-delete" onclick="app.confirmDeleteRecord(${recordId})" title="删除记录">
-                            🗑️删除
-                        </button>
-                    </div>
-                </div>
-            `;
-        }).join('');
+
+        // 更新过滤后的记录数组
+        this.filteredRecords = filtered;
+
+        // 重新渲染（从头开始）
+        this.renderAllRecords(true);
     }
 
     renderAnalytics() {
@@ -2530,34 +2610,50 @@ class LearningBuddyApp {
         try {
             // Show loading state
             this.showLoading(true);
-            
-            // Load complete records data for analytics (last 90 days to have enough data)
-            const analyticsResponse = await window.apiService.getRecords({ 
-                limit: 100,  // Maximum allowed by API
-                days: 90     // Last 90 days
-            });
-            
-            // Extract records array from response
-            const analyticsRecords = analyticsResponse?.records || [];
-            
+
+            // Load ALL records for analytics using batch loading
+            let allRecords = [];
+            let skip = 0;
+            const batchSize = 500;
+
+            while (true) {
+                const recordsData = await window.apiService.getRecords({
+                    skip: skip,
+                    limit: batchSize
+                });
+
+                if (!recordsData?.records || recordsData.records.length === 0) {
+                    break; // No more records
+                }
+
+                allRecords = allRecords.concat(recordsData.records);
+
+                // If returned records less than batch size, all records loaded
+                if (recordsData.records.length < batchSize) {
+                    break;
+                }
+
+                skip += batchSize;
+            }
+
             // Convert to the expected format
-            if (analyticsRecords && analyticsRecords.length > 0) {
-                this.records = analyticsRecords.map(record => this.convertBackendRecord(record));
+            if (allRecords && allRecords.length > 0) {
+                this.records = allRecords.map(record => this.convertBackendRecord(record));
             } else {
                 this.records = [];
             }
-            
+
             // Now render analytics with complete data
             this.renderAnalytics();
             this.renderMiniCalendar();
             this.renderChart();
-            
-            
+
+
         } catch (error) {
             console.error('❌ Analytics data loading failed:', error);
             // Fallback to existing data if any
             this.renderAnalytics();
-            this.renderMiniCalendar();  
+            this.renderMiniCalendar();
             this.renderChart();
         } finally {
             this.showLoading(false);

@@ -3210,11 +3210,38 @@ body {
     .preview-link {
         max-width: 240px;
     }
-    
+
     .preview-value {
         padding: 8px 12px;
         font-size: 13px;
     }
-    
-    
+
+
+}
+
+/* 无限滚动加载指示器 */
+.load-more-indicator {
+    text-align: center;
+    padding: 24px;
+    color: var(--text-secondary);
+    font-size: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+}
+
+.load-more-count {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    font-weight: 500;
+}
+
+.all-loaded-indicator {
+    text-align: center;
+    padding: 24px;
+    color: var(--text-tertiary);
+    font-size: 13px;
+    border-top: 1px solid var(--border-color);
+    margin-top: 16px;
 }

@@ -72,8 +72,8 @@ async def debug_current_user(current_user_id: str = Depends(get_current_user_id)
 @router.get("/", response_model=dict)
 async def get_records(
     skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=100),
-    days: Optional[int] = Query(None, ge=1, le=365, description="获取最近N天的记录"),
+    limit: int = Query(50, ge=1, le=1000),
+    days: Optional[int] = Query(None, ge=1, le=3650, description="获取最近N天的记录"),
     current_user_id: str = Depends(get_current_user_id)
 ):
     """获取用户的学习记录"""
