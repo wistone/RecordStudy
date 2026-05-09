@@ -4114,7 +4114,15 @@ class LearningBuddyApp {
             console.warn('缓存写入失败:', e);
         }
     }
-    
+
+    removeFromCache(key) {
+        try {
+            localStorage.removeItem(`app_cache_${key}`);
+        } catch (e) {
+            console.warn('缓存删除失败:', e);
+        }
+    }
+
     clearCache(keyPattern = null) {
         try {
             const keys = Object.keys(localStorage);
